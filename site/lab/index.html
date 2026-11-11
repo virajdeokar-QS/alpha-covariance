@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f3f0e8"><meta name="description" content="Interactive two-asset covariance and portfolio volatility model using visitor-defined assumptions.">
+<title>Covariance Lab — Alpha Covariance</title><link rel="canonical" href="https://alphacovariance.com/lab/">
+<meta property="og:type" content="website"><meta property="og:site_name" content="Alpha Covariance">
+<meta property="og:title" content="Covariance Lab — Alpha Covariance"><meta property="og:description" content="Interactive two-asset covariance and portfolio volatility model using visitor-defined assumptions.">
+<meta property="og:url" content="https://alphacovariance.com/lab/"><meta property="og:image" content="https://alphacovariance.com/assets/social-card.svg">
+<link rel="icon" type="image/svg+xml" href="/assets/favicon.svg"><link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header"><div class="container header-inner">
+<a class="brand" href="/" aria-label="Alpha Covariance home"><span class="mark" aria-hidden="true">A/C</span><span class="brand-copy"><span class="brand-name">ALPHA COVARIANCE</span><span class="brand-sub">RESEARCH &amp; TECHNOLOGY</span></span></a>
+<button class="menu-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="main-nav"><span></span><span></span></button>
+<nav class="nav" id="main-nav" aria-label="Main navigation"><a class="nav-link" href="/research/" >Research</a><a class="nav-link" href="/systems/" >Systems</a><a class="nav-link" href="/lab/" aria-current="page">Lab</a><a class="nav-link" href="/notes/" >Notes</a><a class="nav-link" href="/about/" >About</a><a class="nav-link" href="/contact/">Contact</a></nav>
+<a href="/contact/" class="header-action">OPEN A CONVERSATION <span aria-hidden="true">↗</span></a>
+</div></header>
+<div class="site-status"><div class="container status-inner"><div class="status-left"><span class="status-label"><span class="accent-dot" style="background:#4e8d62"></span>INDEPENDENT RESEARCH INITIATIVE</span><span class="status-pill">EST. 2026</span></div><div class="status-right">INDIA / METHODS BEFORE METRICS / AC—001</div></div></div>
+<main id="main">
+<section class="page-hero container"><span class="eyebrow"><span class="sq"></span>PUBLIC INSTRUMENT / 001</span><h1 class="page-title">The covariance<br><em class="editorial">playground.</em></h1><div class="page-hero-bottom"><p class="lead">A small interactive demonstration of how two asset volatilities, their correlation and portfolio weights shape portfolio risk.</p><span class="page-hero-index">MODEL TYPE: ANALYTICAL<br>ALL INPUTS: VISITOR-DEFINED</span></div></section>
+<section class="section container"><div class="lab-layout"><div class="lab-control-card"><span class="mono" style="color:var(--acid)">CONTROL PANEL / 01</span><h2 style="margin-top:23px">Specify assumptions.</h2><p>These are annualised model inputs, not live market estimates. Change any value to recompute the results locally in your browser.</p>
+<div class="control-group"><div class="control-head"><label for="vol-a">Asset A volatility</label><output id="out-vol-a">20%</output></div><input id="vol-a" class="slider" type="range" min="1" max="80" value="20" step="1"><div class="range-labels"><span>1%</span><span>80%</span></div></div>
+<div class="control-group"><div class="control-head"><label for="vol-b">Asset B volatility</label><output id="out-vol-b">35%</output></div><input id="vol-b" class="slider" type="range" min="1" max="80" value="35" step="1"><div class="range-labels"><span>1%</span><span>80%</span></div></div>
+<div class="control-group"><div class="control-head"><label for="rho">Correlation (ρ)</label><output id="out-rho">+0.20</output></div><input id="rho" class="slider" type="range" min="-100" max="100" value="20" step="1"><div class="range-labels"><span>−1.00</span><span>+1.00</span></div></div>
+<div class="control-group"><div class="control-head"><label for="weight-a">Asset A weight</label><output id="out-weight-a">60%</output></div><input id="weight-a" class="slider" type="range" min="0" max="100" value="60" step="1"><div class="range-labels"><span>0%</span><span>100%</span></div></div>
+<span class="mono" style="color:#9db6a4;line-height:1.7;display:block;margin-top:20px">ASSET B WEIGHT = 100% − ASSET A WEIGHT<br>LONG-ONLY / FULLY INVESTED</span></div>
+<div class="lab-results"><div class="lab-graph"><div class="lab-graph-meta"><span>SIMULATED BIVARIATE NORMAL</span><span>ρ / CORRELATION</span></div><canvas id="lab-scatter" aria-label="Simulated scatter plot based on selected correlation"></canvas></div>
+<div class="lab-numbers"><div class="metric"><span class="mono">PORTFOLIO VOLATILITY</span><strong id="result-vol">—</strong><p>Annualised / assumed inputs</p></div><div class="metric"><span class="mono">PAIR COVARIANCE</span><strong id="result-cov">—</strong><p>Decimal return units squared</p></div><div class="metric"><span class="mono">VOLATILITY REDUCTION</span><strong id="result-div">—</strong><p>Versus weighted average vol.</p></div></div>
+<div class="lab-breakdown"><div class="mono muted">ALLOCATION / <span id="portfolio-weights">60% / 40%</span></div><div class="bar-row"><span>ASSET A</span><div class="bar-track"><span class="bar-fill" id="bar-a" style="width:60%"></span></div><span id="allocation-a">60%</span></div><div class="bar-row"><span>ASSET B</span><div class="bar-track"><span class="bar-fill alt" id="bar-b" style="width:40%"></span></div><span id="allocation-b">40%</span></div></div>
+<div class="lab-formula"><span style="color:#5c7865">PORTFOLIO VARIANCE</span><div id="math-output" style="margin-top:12px">σₚ² = w₁²σ₁² + w₂²σ₂² + 2w₁w₂ρσ₁σ₂</div></div></div></div>
+<p class="disclaimer" style="margin-top:26px"><strong>Model boundaries:</strong> The scatter plot uses deterministic synthetic observations; its visual sample statistics need not equal the exact input correlation. Portfolio volatility is computed analytically from the formula, not estimated from the scatter. No forecasts, returns, recommendations or real market data are used. Risk is not fully captured by volatility.</p></section>
+<section class="section container" style="padding-top:0"><div class="list-layout"><div><span class="eyebrow"><span class="sq"></span>WHY THIS EXISTS</span></div><div><h2 class="statement">An instrument should make the assumptions legible.</h2><p class="body-copy">Correlation measures co-movement, not causality. Covariance depends on units and volatilities. The portfolio volatility result depends on a fixed covariance matrix assumption; in real markets both volatility and correlation can shift. This is a public teaching interface, not a trading system.</p></div></div></section>
+</main>
+<footer class="site-footer"><div class="container"><div class="footer-top">
+<div><h2 class="footer-title">Make the method<br><em class="editorial">visible.</em></h2><p class="footer-sub">Alpha Covariance is an independent quantitative research and technology initiative. We build, document and examine financial models and research systems.</p></div>
+<div><div class="footer-mini">EXPLORE</div><div class="footer-links"><a href="/research/">Research</a><a href="/systems/">Systems</a><a href="/lab/">Interactive Lab</a><a href="/notes/">Research Notes</a><a href="/about/">About</a></div></div>
+<div><div class="footer-mini">CONNECT</div><div class="footer-links"><a href="mailto:research@alphacovariance.com">research@alphacovariance.com</a><a href="/contact/">Submit an inquiry</a><a href="/systems/">Source repositories / in preparation</a></div><p class="footer-sub" style="margin-top:24px">No investment advice, signals, or client asset management services are offered through this site.</p></div>
+</div><div class="footer-bottom"><span>© 2026 ALPHA COVARIANCE · INDEPENDENT RESEARCH &amp; TECHNOLOGY</span><span>BUILT FOR RIGOUR, NOT APPEARANCE. <a href="/privacy/" style="text-decoration:underline">PRIVACY</a></span></div></div></footer>
+<script type="module" src="/assets/app.js"></script><script type="module" src="/assets/lab.js"></script>
+</body></html>
