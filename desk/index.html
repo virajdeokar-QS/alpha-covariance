@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<meta name="theme-color" content="#10191b">
+<meta name="description" content="Private Alpha Covariance research workbench. Approved access only.">
+<title>Research Desk / Alpha Covariance</title>
+<link rel="icon" href="/assets/desk-icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/assets/desk.css">
+<script src="/assets/desk.js" defer></script>
+</head>
+<body>
+<a href="#main" class="skip">Skip to market overview</a>
+<div class="shell">
+  <aside class="rail" id="rail">
+    <div class="rail-top"><a class="brand" href="https://alphacovariance.com/"><span class="brand-emblem">A<span class="brand-slash">/</span>C</span><span class="brand-words">ALPHA<br>COVARIANCE<small>RESEARCH SYSTEMS</small></span></a><button type="button" id="rail-close" class="rail-close" aria-label="Close navigation">✕</button></div>
+    <div class="rail-caption">PRIVATE OPERATIONS <span>01 / 01</span></div>
+    <nav aria-label="Research desk" class="desk-nav">
+      <a data-route="overview" class="nav-choice selected" href="#overview"><span class="nav-symbol">◫</span><span>Market overview</span><span class="nav-key">01</span></a>
+      <a data-route="terminal" class="nav-choice" href="#terminal"><span class="nav-symbol">⌁</span><span>Market terminal</span><span class="nav-key">02</span></a>
+      <div class="nav-divider">RESEARCH OPERATIONS</div>
+      <a data-route="strategies" class="nav-choice" href="#strategies"><span class="nav-symbol">◇</span><span>Strategy registry</span><span class="nav-future">Next</span></a>
+      <a data-route="backtests" class="nav-choice" href="#backtests"><span class="nav-symbol">▤</span><span>Backtest studio</span><span class="nav-future">Next</span></a>
+      <a data-route="execution" class="nav-choice" href="#execution"><span class="nav-symbol">⇄</span><span>Paper execution</span><span class="nav-future">Later</span></a>
+      <a data-route="history" class="nav-choice" href="#history"><span class="nav-symbol">☷</span><span>Trade journal</span><span class="nav-future">Later</span></a>
+      <a data-route="research" class="nav-choice" href="#research"><span class="nav-symbol">⌬</span><span>Research library</span><span class="nav-future">Later</span></a>
+    </nav>
+    <div class="rail-bottom"><div class="rail-annotation">PRIVATE ACCESS</div><div class="identity"><span class="identity-dot"></span><div><strong id="user-email">Verifying session</strong><small>Restricted research workspace</small></div></div><div class="rail-foot"><span>AC DESK / 0.1</span><span>READ-ONLY</span></div></div>
+  </aside>
+  <div class="workarea" id="main">
+    <header class="topbar">
+      <div class="topbar-left"><button id="menu-open" class="menu-open" aria-label="Open navigation">☰</button><span class="breadcrumb">WORKSPACE</span><span class="crumb-sep">/</span><strong id="page-label">GLOBAL MARKETS</strong></div>
+      <div class="topbar-right"><div class="header-signal"><span class="signal-bullet"></span><span>RESEARCH ENVIRONMENT</span></div><div class="clock" id="utc-clock">UTC —</div><a href="https://alphacovariance.com/" class="leave-link" title="Public site">PUBLIC SITE ↗</a></div>
+    </header>
+    <main>
+      <section class="intro-grid" id="intro-grid">
+        <div class="intro-copy"><span class="overline">AC / PRIVATE MARKETS WORKSPACE · RELEASE 001</span><h1>Read the market.<br><span>Question the signal.</span></h1><p>Live source observations. Defined research states. No fictional trades, backtests or performance.</p></div>
+        <div class="pulse-card"><div class="pulse-header"><span>DATA INTEGRITY</span><span id="feed-pulse">WAITING</span></div><div class="pulse-body"><span class="pulse-ring"><span></span></span><div><strong id="feed-headline">Connecting to exchange</strong><small id="feed-description">Live data required to populate prices.</small></div></div><div class="pulse-footer"><span>CONNECTED FEED</span><strong>BINANCE / SPOT</strong></div></div>
+      </section>
+      <section id="overview-view" class="view-panel">
+        <div class="section-title"><div><span class="section-count">01 — GLOBAL SESSION GRID</span><h2>Market landscape</h2><p>Sessions are timezone-based indications, not official holiday-calendar confirmations.</p></div><div class="section-right">AS OF <time id="session-clock">—</time></div></div>
+        <div class="exchange-grid">
+          <article class="exchange-card primary chosen" data-market="crypto" role="button" tabindex="0" aria-label="Show connected crypto instruments"><div class="card-top"><span class="tag tag-bright">CRYPTO / SPOT</span><span class="market-symbol">↗</span></div><h3>Digital assets</h3><p class="market-secondary">24-hour venue · Binance public spot feed</p><div class="market-state"><span class="small-state green"></span><strong>24/7 SESSION</strong><span id="crypto-live-state">Feed checking</span></div></article>
+          <article class="exchange-card" data-market="india" role="button" tabindex="0" aria-label="Show India equities instruments"><div class="card-top"><span class="tag">EQUITIES / INDIA</span><span class="market-symbol">⌁</span></div><h3>NSE · India</h3><p class="market-secondary">09:15–15:30 Asia/Kolkata · regular sessions</p><div class="market-state"><span class="small-state"></span><strong id="nse-state">Calculating window</strong><span>Prices not connected</span></div></article>
+          <article class="exchange-card" data-market="us" role="button" tabindex="0" aria-label="Show United States equities instruments"><div class="card-top"><span class="tag">EQUITIES / UNITED STATES</span><span class="market-symbol">⌁</span></div><h3>NYSE · NASDAQ</h3><p class="market-secondary">09:30–16:00 America/New_York · regular sessions</p><div class="market-state"><span class="small-state"></span><strong id="nyse-state">Calculating window</strong><span>Prices not connected</span></div></article>
+          <article class="exchange-card" data-market="fx" role="button" tabindex="0" aria-label="Show foreign exchange instruments"><div class="card-top"><span class="tag">CURRENCY / GLOBAL</span><span class="market-symbol">⌁</span></div><h3>Foreign exchange</h3><p class="market-secondary">Multi-venue market · provider integration pending</p><div class="market-state"><span class="small-state"></span><strong>NO VERIFIED FEED</strong><span>Not connected</span></div></article>
+        </div>
+        <div class="section-title instruments-heading"><div><span class="section-count">02 — CONNECTED UNIVERSE</span><h2 id="instruments-title">Spot instruments</h2></div><div class="section-right"><span class="live-marker"></span><span id="market-updated">Awaiting live quotes</span></div></div>
+        <div class="instrument-table-wrap"><table class="instrument-table"><thead><tr><th>INSTRUMENT</th><th>VENUE</th><th>LAST PRICE (USDT)</th><th>24H CHANGE</th><th>STATE</th><th aria-label="Open instrument"></th></tr></thead><tbody id="instrument-rows"><tr><td colspan="6" class="loading-row">Connecting to live exchange feed. No placeholder quotes are shown.</td></tr></tbody></table></div>
+      </section>
+      <section id="terminal-view" class="view-panel hidden">
+        <div class="section-title terminal-heading"><div><span class="section-count">02 — MARKET TERMINAL / VERIFIED SOURCE</span><h2 id="terminal-title">BTC / USDT</h2><p id="terminal-subtitle">Binance Spot · Public market data · 1-minute candles</p></div><div class="terminal-controls"><label for="symbol-select">SYMBOL <select id="symbol-select"><option value="BTCUSDT">BTC / USDT</option><option value="ETHUSDT">ETH / USDT</option><option value="SOLUSDT">SOL / USDT</option><option value="BNBUSDT">BNB / USDT</option></select></label><label for="interval-select">INTERVAL <select id="interval-select"><option value="1m">1 min</option><option value="5m">5 min</option><option value="15m">15 min</option><option value="1h">1 hour</option></select></label></div></div>
+        <div class="terminal-grid"><div class="chart-panel"><div class="chart-topline"><div class="price-stack"><strong id="chart-price">—</strong><span id="chart-change">Awaiting verified quotes</span></div><div class="chart-meta"><span id="chart-received">NO VERIFIED CANDLE DATA</span><span class="poll-label">UPDATES APPROX. EVERY 6S</span></div></div><div class="chart-frame"><canvas id="candlestick-chart" aria-label="Live candlestick chart rendered from verified exchange data"></canvas><div id="chart-empty" class="chart-empty">Awaiting exchange OHLC data.<small>Chart will remain empty when the provider is unavailable.</small></div></div><div class="chart-bottom"><span id="chart-data-source">SOURCE: BINANCE SPOT</span><span id="chart-last-candle">NO CANDLES RECEIVED</span></div></div>
+          <aside class="strategy-panel"><div class="aside-kicker">MODEL REGISTER / THIS INSTRUMENT</div><h3>Strategy status</h3><p>Research must earn its status through reproducible out-of-sample tests.</p><div class="strategy-count"><span>Validated positive alpha</span><strong>0</strong></div><div class="strategy-count"><span>Under evaluation</span><strong>0</strong></div><div class="strategy-count"><span>Rejected / archived</span><strong>0</strong></div><div class="strategy-note"><span class="note-mark">!</span><p>No strategies have been registered or validated. This panel will connect to the strategy engine in a later release.</p></div><a href="#strategies" class="aside-link">VIEW STRATEGY REGISTRY <span>↗</span></a></aside></div>
+        <div class="news-panel"><div><span class="section-count">03 — RELATED INFORMATION</span><h3>Instrument news and events</h3></div><div class="news-empty">A licensed, attributable news feed is not yet connected. No headlines are fabricated.</div></div>
+      </section>
+      <section id="future-view" class="view-panel hidden"><div class="future-head"><span class="section-count" id="future-index">RESEARCH MODULE</span><h2 id="future-title">Strategy registry</h2><p id="future-desc">This module is reserved for the next verified release.</p></div><div class="future-grid"><div class="future-main"><span class="future-watermark">NO RECORDS</span><h3>Empty by design.</h3><p id="future-explain">No strategy, trade, P&amp;L or alpha history exists in this release. We will never populate empty systems with invented data.</p></div><div class="future-aside"><span class="aside-kicker">RELEASE DISCIPLINE</span><strong>RESEARCH → BACKTEST → VALIDATE → PAPER</strong><p>All transitions will be explicit, audited, and reversible. No broker connection is included in the planned paper stage.</p></div></div></section>
+    </main>
+    <footer class="desk-footer"><span>© ALPHA COVARIANCE / RESEARCH SYSTEMS</span><span>NO BROKER LINK · NO LIVE EXECUTION · DATA PROVIDER: BINANCE SPOT</span><span>BUILD 0.1 / PRIVATE ALPHA</span></footer>
+  </div>
+</div>
+</body>
+</html>
