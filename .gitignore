@@ -5,3 +5,13 @@ __pycache__/
 .dev.vars
 node_modules/
 .wrangler/
+# Research observations, results and private service credentials: never commit
+runtime/
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+*.env
+*.secret
+*.key
+private-data/
+alpha-covariance-private-data/

@@ -1,3 +1,7 @@
+> **Historical document:** This file describes an earlier stage. For the current consolidated source package and deployment order, follow `START_HERE.md` and `docs/INTEGRATED_RELEASE_DEPLOYMENT.md`. Do not treat this earlier feature-status table as current.
+
+> ARCHIVED: Stage 1 instructions are preserved for history. **Do not follow them for the current release.** Use `docs/STAGE2_COMBINED_RELEASE.md`; the original Stage 1 Binance feed is superseded.
+
 # Alpha Covariance · Stage 1 private Desk deployment
 
 **Goal:** keep `https://alphacovariance.com` public and deploy `https://desk.alphacovariance.com` as an invite-only, read-only market monitoring workspace.

@@ -1,14 +1,31 @@
+
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "alpha-covariance-desk",
   "compatibility_date": "2026-11-11",
   "main": "./desk/worker/index.js",
   "workers_dev": false,
+  "preview_urls": false,
+  "routes": [
+    {
+      "pattern": "desk.alphacovariance.com",
+      "custom_domain": true
+    }
+  ],
   "assets": {
     "directory": "./desk",
     "binding": "ASSETS",
     "run_worker_first": true,
-    "html_handling": "auto-trailing-slash"
+    "html_handling": "none"
   },
-  "observability": { "enabled": true }
+  "d1_databases": [
+    {
+      "binding": "RESEARCH_DB",
+      "database_name": "alpha-covariance-research",
+      "database_id": "24bc70d9-ca0b-4dae-849e-7ad0bbd3ccff"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
 }

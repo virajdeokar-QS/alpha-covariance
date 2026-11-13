@@ -1,9 +1,9 @@
 /* Alpha Covariance Desk 0.1 — no mock prices, orders, or strategies. */
 'use strict';
 const $ = id => document.getElementById(id);
-const TICKERS = ['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT'];
-const LABELS = {BTCUSDT:'Bitcoin',ETHUSDT:'Ethereum',SOLUSDT:'Solana',BNBUSDT:'BNB'};
-const state = { market: 'crypto', view: 'overview', symbol: 'BTCUSDT', interval: '1m', quotes: null, candles: [], candleFetched: null, mouseX: null, busy: false, live: false };
+const TICKERS = ['BTC-USD','ETH-USD','SOL-USD'];
+const LABELS = {'BTC-USD':'Bitcoin','ETH-USD':'Ethereum','SOL-USD':'Solana'};
+const state = { market: 'crypto', view: 'overview', symbol: 'BTC-USD', interval: '1m', quotes: null, candles: [], candleFetched: null, mouseX: null, busy: false, pendingRefresh: false, live: false };
 const routeTitles = { overview:'GLOBAL MARKETS',terminal:'MARKET TERMINAL',strategies:'STRATEGY REGISTRY',backtests:'BACKTEST STUDIO',execution:'PAPER EXECUTION',history:'TRADE JOURNAL',research:'RESEARCH LIBRARY' };
 const formatPrice = x => Number.isFinite(x) ? x.toLocaleString('en-US',{minimumFractionDigits:x>=100?2:4,maximumFractionDigits:x>=100?2:4}) : '—';
 const escapeHTML = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -37,10 +37,13 @@ function updateSessions(){
   $('session-clock').textContent=new Date().toLocaleString('en-GB',{timeZone:'UTC',dateStyle:'medium',timeStyle:'short'})+' UTC';
   $('nse-state').textContent=sessionWindow('Asia/Kolkata',9*60+15,15*60+30)?'WITHIN SESSION WINDOW*':'OUTSIDE SESSION WINDOW';
   $('nyse-state').textContent=sessionWindow('America/New_York',9*60+30,16*60)?'WITHIN SESSION WINDOW*':'OUTSIDE SESSION WINDOW';
+  $('hkex-state').textContent=(sessionWindow('Asia/Hong_Kong',9*60+30,12*60)||sessionWindow('Asia/Hong_Kong',13*60,16*60))?'WITHIN SESSION WINDOW*':'OUTSIDE SESSION WINDOW';
+  $('lse-state').textContent=sessionWindow('Europe/London',8*60,16*60+30)?'WITHIN SESSION WINDOW*':'OUTSIDE SESSION WINDOW';
+  $('euronext-state').textContent=sessionWindow('Europe/Paris',9*60,17*60+30)?'WITHIN SESSION WINDOW*':'OUTSIDE SESSION WINDOW';
 }
 function renderQuotes(){
   if(state.market!=='crypto'){
-    const sector={india:'Indian equities',us:'US equities',fx:'Foreign exchange'}[state.market]||'Unconnected instruments';
+    const sector={india:'Indian equities',us:'US equities',hongkong:'Hong Kong equities',london:'United Kingdom equities',europe:'European equities',fx:'Foreign exchange'}[state.market]||'Unconnected instruments';
     $('instrument-rows').innerHTML=`<tr><td colspan="6" class="loading-row">${sector}: a licensed verified price feed is not connected. No prices are displayed.</td></tr>`;
     return;
   }
@@ -49,7 +52,7 @@ function renderQuotes(){
   $('instrument-rows').innerHTML=TICKERS.map(sym=>{
     const q=bySym.get(sym); if(!q)return '';
     const delta=q.change24h;
-    return `<tr data-symbol="${sym}" tabindex="0" role="link" aria-label="Open ${LABELS[sym]} terminal"><td class="symbol-cell"><strong>${sym.slice(0,-4)}/USDT</strong><small>${LABELS[sym]}</small></td><td class="tiny-source">BINANCE SPOT</td><td>${formatPrice(q.price)}</td><td class="${delta===null?'':delta>=0?'pos':'neg'}">${delta===null?'—':`${delta>=0?'+':''}${delta.toFixed(2)}%`}</td><td><span class="tiny-source">LIVE FEED</span></td><td class="row-end">↗</td></tr>`;
+    return `<tr data-symbol="${sym}" tabindex="0" role="link" aria-label="Open ${LABELS[sym]} terminal"><td class="symbol-cell"><strong>${sym.slice(0,-4)}/USD</strong><small>${LABELS[sym]}</small></td><td class="tiny-source">COINBASE EXCHANGE</td><td>${formatPrice(q.price)}</td><td class="${delta===null?'':delta>=0?'pos':'neg'}">${delta===null?'—':`${delta>=0?'+':''}${delta.toFixed(2)}%`}</td><td><span class="tiny-source">LIVE FEED</span></td><td class="row-end">↗</td></tr>`;
   }).join('');
   document.querySelectorAll('tr[data-symbol]').forEach(row=>{
     const activate=()=>{state.symbol=row.dataset.symbol;$('symbol-select').value=state.symbol;location.hash='#terminal';};
@@ -60,7 +63,7 @@ function renderQuotes(){
 async function refreshQuotes(){
   try {
     const data=await timeoutFetch('/api/markets');
-    if(data.source!=='Binance Spot' || !Array.isArray(data.tickers) || data.tickers.length!==TICKERS.length || !data.tickers.every(q=>TICKERS.includes(q.symbol)&&Number.isFinite(q.price)&&q.price>0)) throw new Error('Invalid source snapshot');
+    if(data.source!=='Coinbase Exchange' || !Array.isArray(data.tickers) || data.tickers.length!==TICKERS.length || !data.tickers.every(q=>TICKERS.includes(q.symbol)&&Number.isFinite(q.price)&&q.price>0)) throw new Error('Invalid source snapshot');
     state.quotes=data.tickers;setFeed(true);
     $('market-updated').textContent=`SNAPSHOT RECEIVED ${new Date(data.receivedAt).toLocaleTimeString('en-GB',{timeZone:'UTC',hour12:false})} UTC`;
   } catch(e) {
@@ -71,7 +74,7 @@ async function refreshQuotes(){
 }
 function renderPrice(){
   const quote=state.quotes?.find(q=>q.symbol===state.symbol);
-  $('chart-price').textContent=quote?`${formatPrice(quote.price)} USDT`:'—';
+  $('chart-price').textContent=quote?`${formatPrice(quote.price)} USD`:'—';
   $('chart-change').textContent=quote&&quote.change24h!==null?`${quote.change24h>=0?'+':''}${quote.change24h.toFixed(2)}% / 24H`:'No verified price available';
   $('chart-change').className=quote&&quote.change24h!==null?(quote.change24h>=0?'pos':'neg'):'';
 }
@@ -86,9 +89,10 @@ function navigate(){
   $('future-view').classList.toggle('hidden',['overview','terminal'].includes(key));
   $('rail').classList.remove('open');
   if(key==='terminal'){
-    $('terminal-title').textContent=state.symbol.slice(0,-4)+' / USDT';
-    $('terminal-subtitle').textContent=`Binance Spot · Public market data · ${state.interval} candles`;
+    $('terminal-title').textContent=state.symbol.slice(0,-4)+' / USD';
+    $('terminal-subtitle').textContent=`Coinbase Exchange · Public market data · ${state.interval} candles`;
     renderPrice();refreshCandles(true);
+    refreshStrategySummary();
   } else if(!['overview','terminal'].includes(key))renderFuture(key);
 }
 const futureInfo={
@@ -104,18 +108,19 @@ function renderFuture(key){
   $('future-title').textContent=title;$('future-desc').textContent=desc;$('future-explain').textContent=detail;
 }
 async function refreshCandles(reset=false){
-  if(state.view!=='terminal'||state.busy||document.hidden)return;
+  if(state.view!=='terminal'||document.hidden)return;
+  if(state.busy){if(reset)state.pendingRefresh=true;return;}
   state.busy=true;
   const requestedSymbol=state.symbol,requestedInterval=state.interval;
-  if(reset){state.candles=[];$('chart-empty').classList.remove('hidden');$('chart-empty').innerHTML='Requesting verified OHLC candles…<small>Binance Spot · Data feed only</small>';drawChart()}
+  if(reset){state.candles=[];$('chart-empty').classList.remove('hidden');$('chart-empty').innerHTML='Requesting verified OHLC candles…<small>Coinbase Exchange · Data feed only</small>';drawChart()}
   try{
     const data=await timeoutFetch(`/api/candles?symbol=${encodeURIComponent(requestedSymbol)}&interval=${encodeURIComponent(requestedInterval)}`);
-    if(data.symbol!==requestedSymbol||data.interval!==requestedInterval||data.source!=='Binance Spot'||!Array.isArray(data.candles)||!data.candles.length)throw new Error('Unexpected candle response');
+    if(data.symbol!==requestedSymbol||data.interval!==requestedInterval||data.source!=='Coinbase Exchange'||!Array.isArray(data.candles)||!data.candles.length)throw new Error('Unexpected candle response');
     if(state.symbol!==requestedSymbol||state.interval!==requestedInterval)return;
     state.candles=data.candles;state.candleFetched=data.receivedAt;
     $('chart-empty').classList.add('hidden');
     $('chart-received').textContent=`RECEIVED ${new Date(data.receivedAt).toLocaleTimeString('en-GB',{timeZone:'UTC',hour12:false})} UTC`;
-    const last=state.candles.at(-1);$('chart-last-candle').textContent=`LAST BAR ${timeOf(last.t)} UTC · ${last.closed?'CLOSED':'FORMING'}`;
+    const last=state.candles.at(-1);$('chart-last-candle').textContent=`LAST BAR ${timeOf(last.t)} UTC · ${last.closed?'CLOSED':'FORMING'} · ${data.missingIntervals||0} MISSING INTERVALS (NOT FILLED)`;
     drawChart();
   }catch(e){
     if(state.symbol!==requestedSymbol||state.interval!==requestedInterval)return;
@@ -123,7 +128,7 @@ async function refreshCandles(reset=false){
     state.candles=[];drawChart();
     $('chart-empty').classList.remove('hidden');$('chart-empty').innerHTML='Live candle feed unavailable.<small>Exchange data could not be verified. Nothing is simulated.</small>';
     $('chart-received').textContent='PROVIDER UNAVAILABLE';$('chart-last-candle').textContent='NO VERIFIED CANDLES';
-  }finally{state.busy=false}
+  }finally{state.busy=false;if(state.pendingRefresh){state.pendingRefresh=false;void refreshCandles(true);}}
 }
 function drawChart(){
   const canvas=$('candlestick-chart');if(!canvas)return;
@@ -164,6 +169,22 @@ function drawChart(){
     ctx.fillStyle='#263938';ctx.fillRect(12,11,boxWidth,26);ctx.fillStyle='#ecf6e8';ctx.textAlign='left';ctx.fillText(label,21,28);
   }
 }
+async function refreshStrategySummary(){
+  const ids=['strat-validated','strat-drafts','strat-archived'];
+  if(!ids.every(id=>$(id)))return;
+  try{
+    const data=await timeoutFetch('/api/strategies');
+    if(!Array.isArray(data.strategies))throw new Error('Registry unavailable');
+    const rows=data.strategies.filter(s=>typeof s.universe==='string'&&s.universe.toUpperCase().includes(state.symbol));
+    $('strat-validated').textContent=rows.filter(s=>s.status==='validated').length;
+    $('strat-drafts').textContent=rows.filter(s=>s.status==='draft').length;
+    $('strat-archived').textContent=rows.filter(s=>s.status==='archived').length;
+    $('strategy-summary-note').textContent=rows.length?'Research specifications only. No backtests or paper orders are running.':'No strategies registered for this instrument.';
+  }catch{
+    ids.forEach(id=>$(id).textContent='—');
+    $('strategy-summary-note').textContent='Research registry unavailable until owner access and D1 storage are configured.';
+  }
+}
 async function start(){
   updateSessions();setInterval(updateSessions,30000);
   try{const user=await timeoutFetch('/api/whoami');$('user-email').textContent=user.email||'Approved researcher'}catch(e){$('user-email').textContent='Access verification required'}
@@ -178,7 +199,7 @@ async function start(){
     const pick=()=>{
       state.market=card.dataset.market;
       document.querySelectorAll('.exchange-card[data-market]').forEach(c=>c.classList.toggle('chosen',c===card));
-      $('instruments-title').textContent=state.market==='crypto'?'Spot instruments':({india:'Indian equities',us:'US equities',fx:'Foreign exchange'}[state.market]);
+      $('instruments-title').textContent=state.market==='crypto'?'Spot instruments':({india:'Indian equities',us:'US equities',hongkong:'Hong Kong equities',london:'United Kingdom equities',europe:'European equities',fx:'Foreign exchange'}[state.market]);
       renderQuotes();$('instruments-title').scrollIntoView({behavior:'smooth',block:'start'});
     };
     card.addEventListener('click',pick);card.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick()}});
@@ -186,6 +207,8 @@ async function start(){
   window.addEventListener('hashchange',navigate);
   navigate();refreshQuotes();
   setInterval(refreshQuotes,20000);
-  setInterval(()=>refreshCandles(),6000);
+  refreshStrategySummary();
+  setInterval(()=>refreshCandles(),30000);
+  setInterval(refreshStrategySummary,60000);
 }
 document.addEventListener('DOMContentLoaded',start);

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive"><meta name="theme-color" content="#0b1317">
+<meta name="description" content="Restricted and versioned quantitative research specifications.">
+<title>Strategy Research Studio · Alpha Covariance</title>
+<link rel="icon" href="/assets/desk-icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/assets/studio.css">
+<script src="/assets/studio.js" defer></script>
+</head><body>
+<a class="skip" href="#main">Skip to research studio</a>
+<header class="top"><a class="wordmark" href="/"><span class="insignia">A/C</span><span>ALPHA COVARIANCE<small>PRIVATE QUANTITATIVE RESEARCH</small></span></a>
+<div class="topnav"><a href="/">MARKET TERMINAL</a><span class="top-current">STRATEGY STUDIO / 02</span><span id="session-identity">VERIFYING IDENTITY</span></div></header>
+<main id="main" class="page">
+<section class="hero"><div><p class="eyebrow"><i></i> RESEARCH OPERATIONS / STRATEGY REGISTRY</p><h1>Research is a<br><em>versioned artifact.</em></h1><p class="hero-copy">Create falsifiable specifications, document assumptions and preserve every revision. Backtesting and execution are separate, controlled services and are not active in this release.</p></div>
+<div class="release-card"><span>RELEASE 002 / STATUS</span><strong>SPECIFICATION<br>AND GOVERNANCE</strong><div><span>BACKTEST ENGINE</span><b>NOT CONNECTED</b></div><div><span>PAPER ORDERS</span><b>DISABLED</b></div><div><span>STORAGE</span><b id="storage-state">CHECKING</b></div></div></section>
+<section class="figures" aria-label="Strategy counts"><div><span>REGISTERED</span><strong id="metric-total">—</strong></div><div><span>RESEARCH DRAFTS</span><strong id="metric-draft">—</strong></div><div><span>ARCHIVED</span><strong id="metric-archived">—</strong></div><div><span>VALIDATED ALPHA</span><strong id="metric-validated">—</strong><small>Evidence-backed only; no promotion in Stage 2</small></div></section>
+<div id="notice" role="status" aria-live="polite" class="notice">Verifying account and research storage…</div>
+<div class="work-grid">
+<section class="registry" aria-labelledby="registry-heading"><div class="pane-top"><div><p class="eyebrow">01 / RESEARCH CATALOGUE</p><h2 id="registry-heading">Strategy registry</h2></div><button type="button" class="ghost" id="reload">REFRESH ↻</button></div>
+<div class="table-wrap"><table><thead><tr><th>SPECIFICATION</th><th>UNIVERSE</th><th>REVISION</th><th>STATE</th><th></th></tr></thead><tbody id="registry-rows"><tr><td colspan="5">Loading verified research records…</td></tr></tbody></table></div>
+<div id="record-details" class="details" aria-live="polite"><p>Select a registered specification to view its research details and revision history.</p></div></section>
+<section class="editor" aria-labelledby="editor-heading"><div class="pane-top"><div><p class="eyebrow">02 / RESEARCH AUTHORING</p><h2 id="editor-heading">New specification</h2></div><button type="button" class="ghost" id="new-record">NEW</button></div>
+<form id="research-form">
+<label>Research name <span>*</span><input name="name" maxlength="100" required placeholder="e.g. BTC/USD short-horizon mean reversion"></label>
+<label>Research hypothesis <span>*</span><textarea name="hypothesis" required maxlength="2500" rows="3" placeholder="What falsifiable relationship or market inefficiency are we testing?"></textarea></label>
+<div class="input-grid"><label>Universe <span>*</span><input name="universe" required maxlength="2500" placeholder="BTC-USD / Coinbase Exchange"></label><label>Signal approach <span>*</span><select name="signal_family" required><option value="custom_research">Custom research specification</option><option value="moving_average_cross">Moving-average crossover</option><option value="mean_reversion">Mean reversion</option><option value="momentum">Momentum / breakout</option></select></label></div>
+<label>Entry criteria <span>*</span><textarea name="entry_logic" maxlength="2500" rows="2" required placeholder="Precise entry definition; inputs and timing"></textarea></label>
+<label>Exit criteria <span>*</span><textarea name="exit_logic" maxlength="2500" rows="2" required placeholder="Exit signals, holding period and invalidation"></textarea></label>
+<label>Risk assumptions <span>*</span><textarea name="risk_controls" maxlength="2500" rows="2" required placeholder="Exposure, fees, slippage, leverage, stops"></textarea></label>
+<label>Configuration JSON <span>*</span><textarea name="parameters" rows="3" spellcheck="false" required>{}</textarea><small>Custom JSON is stored as research data. Only reviewed parameter keys (fast/slow, lookback, or window/entry_z/exit_z) are executable in the historical Lab; unknown keys are rejected.</small></label>
+<label>Research references <small>One HTTPS URL per line</small><textarea name="references" rows="2" placeholder="https://doi.org/..."></textarea></label>
+<div class="form-actions"><button id="save" type="submit">SAVE RESEARCH SPECIFICATION <span aria-hidden="true">↗</span></button><span id="form-state">DRAFTS ONLY · NO AUTOMATIC TRADING</span></div>
+</form></section></div>
+<section class="method"><div><span class="eyebrow">03 / VALIDATION POLICY</span><h2>A hypothesis is not an alpha.</h2></div><p>Research drafts are not trading signals. Moving a strategy toward validation will require historical-data provenance, out-of-sample testing, transaction-cost models, reproducible run IDs, uncertainty estimates and signed research approval. An experimental long-only historical backtest and virtual paper-replay engine is available in the separate, owner-only <a href="/laboratory.html#backtests">Research Operations Lab</a> when its local service and licensed historical datasets are connected. This does not constitute statistical alpha validation or live market execution.</p></section>
+</main><footer>ALPHA COVARIANCE / PRIVATE RESEARCH SYSTEMS <span>NO BROKER LINK · NO LIVE EXECUTION · OWNER-CONTROLLED DATA</span></footer>
+</body></html>

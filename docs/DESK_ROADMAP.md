@@ -1,3 +1,5 @@
+> **Historical document:** This file describes an earlier stage. For the current consolidated source package and deployment order, follow `START_HERE.md` and `docs/INTEGRATED_RELEASE_DEPLOYMENT.md`. Do not treat this earlier feature-status table as current.
+
 # Alpha Covariance Research Desk · release architecture
 
 ## Non-negotiable invariants

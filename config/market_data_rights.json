@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "purpose": "Non-commercial educational quantitative engineering and research",
+  "providers": [
+    {
+      "provider": "Coinbase Exchange",
+      "market": "Spot cryptocurrency",
+      "symbols": ["BTC-USD", "ETH-USD", "SOL-USD"],
+      "owner_view": "manual_review_required",
+      "algorithm_training_and_validation": "disabled_pending_written_permission",
+      "automated_backtesting": "disabled_pending_written_permission",
+      "redistribution": "disabled",
+      "external_display": "disabled",
+      "stored_candle_history": "disabled_pending_review",
+      "commercial_use": "disabled",
+      "reviewer": null,
+      "permission_document": null
+    }
+  ],
+  "server_side_enforcement": {
+    "owner_identity_secret": "FEED_OWNER_EMAIL",
+    "manual_owner_display_flag": "MARKET_DATA_OWNER_DISPLAY",
+    "default_when_unset": "deny"
+  }
+}

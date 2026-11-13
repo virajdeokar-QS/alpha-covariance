@@ -1,155 +1,259 @@
-/**
- * Alpha Covariance Desk · private read-only market gateway
- * Access authenticates allowed emails at the edge; this Worker independently
- * checks the signed application JWT before serving ANY asset or API response.
- * No paper orders or personal information are stored at this stage.
+/** Alpha Covariance Research Desk · Stage 2 gateway.
+ * Every page, asset and API response requires a verified Cloudflare Access JWT.
+ * Coinbase market data is server-restricted to FEED_OWNER_EMAIL pending rights review.
+ * Strategy metadata lives in D1; an optional external engine handles licensed historical backtests and simulated replay.
+ * No brokerage connection or live algorithmic data consumption is permitted.
  */
-const SYMBOLS = Object.freeze(['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT']);
-const INTERVALS = new Set(['1m', '5m', '15m', '1h']);
-const FEED = 'https://data-api.binance.vision/api/v3';
+const HOST = 'desk.alphacovariance.com';
+const SOURCE = 'Coinbase Exchange';
+const COINBASE = 'https://api.exchange.coinbase.com';
+const SYMBOLS = Object.freeze(['BTC-USD', 'ETH-USD', 'SOL-USD']);
+const INTERVALS = Object.freeze({ '1m':60, '5m':300, '15m':900, '1h':3600 });
 let certsCache = { at: 0, data: null };
 
-const json = (data, status = 200) => new Response(JSON.stringify(data), {
-  status,
-  headers: { 'content-type': 'application/json; charset=utf-8',
-    'cache-control': 'private, no-store', 'x-content-type-options': 'nosniff' }
-});
-
-function decodeBase64Url(part) {
-  const normalized = part.replace(/-/g, '+').replace(/_/g, '/');
-  const binary = atob(normalized + '='.repeat((4 - normalized.length % 4) % 4));
-  return Uint8Array.from(binary, ch => ch.charCodeAt(0));
+function json(data, status = 200) {
+  return new Response(JSON.stringify(data), {status, headers:{
+    'content-type':'application/json; charset=utf-8', 'cache-control':'private, no-store',
+    'x-content-type-options':'nosniff', 'x-robots-tag':'noindex, nofollow, noarchive', 'x-ac-surface':'private-research-desk', 'vary':'Cookie, CF-Access-Jwt-Assertion'
+  }});
 }
-function parseSegment(part) {
-  return JSON.parse(new TextDecoder().decode(decodeBase64Url(part)));
+function fail(status, code, message) { return json({error:code, message},status); }
+function base64url(part) {
+  const normalized=part.replace(/-/g,'+').replace(/_/g,'/');
+  return Uint8Array.from(atob(normalized+'='.repeat((4-normalized.length%4)%4)),c=>c.charCodeAt(0));
 }
-
-async function validateAccessJwt(request, env) {
-  // Required: both variables must be set (fail closed on missing setup).
-  const team = String(env.ACCESS_TEAM_DOMAIN || '').replace(/\/$/, '');
-  const audience = String(env.ACCESS_AUD || '');
-  if (!/^https:\/\/[a-z0-9-]+\.cloudflareaccess\.com$/.test(team) || !audience) {
-    throw new Error('private access is not configured');
-  }
-  const jwt = request.headers.get('cf-access-jwt-assertion');
-  if (!jwt || jwt.length > 10000) throw new Error('Access assertion missing');
-  const parts = jwt.split('.');
-  if (parts.length !== 3) throw new Error('Invalid assertion');
-  const header = parseSegment(parts[0]);
-  const payload = parseSegment(parts[1]);
-  const now = Math.floor(Date.now() / 1000);
-  if (header.alg !== 'RS256' || !header.kid || payload.iss !== team ||
-      !(Array.isArray(payload.aud) ? payload.aud.includes(audience) : payload.aud === audience) ||
-      !Number.isFinite(payload.exp) || payload.exp <= now ||
-      !Number.isFinite(payload.iat) || payload.iat > now + 60 ||
-      (payload.nbf !== undefined && payload.nbf > now + 60)) {
-    throw new Error('Invalid assertion claims');
-  }
-  if (!certsCache.data || Date.now() - certsCache.at > 5 * 60 * 1000) {
-    const response = await fetch(`${team}/cdn-cgi/access/certs`, { signal: AbortSignal.timeout(6000) });
-    if (!response.ok) throw new Error('Signing keys unavailable');
-    const data = await response.json();
-    if (!Array.isArray(data.keys)) throw new Error('Unexpected signing keys');
-    certsCache = { data: data.keys, at: Date.now() };
-  }
-  let jwk = certsCache.data.find(k => k.kid === header.kid && k.kty === 'RSA');
-  // Refresh immediately on key rotation.
-  if (!jwk) {
-    certsCache.at = 0;
-    const response = await fetch(`${team}/cdn-cgi/access/certs`, { signal: AbortSignal.timeout(6000) });
-    if (!response.ok) throw new Error('Signing keys unavailable');
-    const data = await response.json();
-    certsCache = { data: data.keys || [], at: Date.now() };
-    jwk = certsCache.data.find(k => k.kid === header.kid && k.kty === 'RSA');
-  }
-  if (!jwk) throw new Error('Signing key not found');
-  const key = await crypto.subtle.importKey('jwk', jwk,
-    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify']);
-  const bytes = new TextEncoder().encode(`${parts[0]}.${parts[1]}`);
-  const good = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, decodeBase64Url(parts[2]), bytes);
-  if (!good) throw new Error('Bad assertion signature');
-  return { email: typeof payload.email === 'string' ? payload.email : 'Approved researcher' };
+function parsePart(part) { return JSON.parse(new TextDecoder().decode(base64url(part))); }
+async function validateAccessJwt(request,env) {
+  const team=String(env.ACCESS_TEAM_DOMAIN||'').replace(/\/$/,'');
+  const aud=String(env.ACCESS_AUD||'');
+  if(!/^https:\/\/[a-z0-9-]+\.cloudflareaccess\.com$/.test(team)||!aud)throw Error('Access not configured');
+  const token=request.headers.get('cf-access-jwt-assertion');
+  if(!token||token.length>10000)throw Error('Access assertion missing');
+  const parts=token.split('.');if(parts.length!==3)throw Error('Invalid JWT');
+  const header=parsePart(parts[0]),payload=parsePart(parts[1]),now=Math.floor(Date.now()/1000);
+  if(header.alg!=='RS256'||!header.kid||payload.iss!==team||
+      !(Array.isArray(payload.aud)?payload.aud.includes(aud):payload.aud===aud)||
+      !Number.isFinite(payload.exp)||payload.exp<=now||
+      !Number.isFinite(payload.iat)||payload.iat>now+60||
+      (payload.nbf!==undefined&&payload.nbf>now+60)||
+      typeof payload.email!=='string'||!payload.email.includes('@'))throw Error('Invalid claims');
+  const getCerts=async()=>{
+    const response=await fetch(`${team}/cdn-cgi/access/certs`,{signal:AbortSignal.timeout(6000)});
+    if(!response.ok)throw Error('Key discovery failure');
+    const data=await response.json();if(!Array.isArray(data.keys))throw Error('Invalid JWKS');
+    certsCache={data:data.keys,at:Date.now()};
+  };
+  if(!certsCache.data||Date.now()-certsCache.at>300000)await getCerts();
+  let jwk=certsCache.data.find(k=>k.kid===header.kid&&k.kty==='RSA');
+  if(!jwk){await getCerts();jwk=certsCache.data.find(k=>k.kid===header.kid&&k.kty==='RSA');}
+  if(!jwk)throw Error('Unrecognized signing key');
+  const key=await crypto.subtle.importKey('jwk',jwk,{name:'RSASSA-PKCS1-v1_5',hash:'SHA-256'},false,['verify']);
+  const valid=await crypto.subtle.verify('RSASSA-PKCS1-v1_5',key,base64url(parts[2]),new TextEncoder().encode(parts[0]+'.'+parts[1]));
+  if(!valid)throw Error('Bad signature');
+  const email=payload.email.trim().toLowerCase();
+  const owner=String(env.FEED_OWNER_EMAIL||'').trim().toLowerCase();
+  return {email, owner:owner.length>3&&email===owner};
 }
-
-async function getExchange(path) {
-  const upstream = await fetch(`${FEED}/${path}`, {
-    headers: { 'accept': 'application/json' },
-    signal: AbortSignal.timeout(6500),
+async function upstream(path) {
+  const response=await fetch(`${COINBASE}${path}`,{
+    headers:{accept:'application/json'},signal:AbortSignal.timeout(7500)
   });
-  if (!upstream.ok) throw new Error(`Exchange feed HTTP ${upstream.status}`);
-  return upstream.json();
+  if(!response.ok)throw Error('Market data provider unavailable');
+  const type=response.headers.get('content-type')||'';
+  if(!type.includes('json'))throw Error('Unexpected provider response type');
+  return response.json();
 }
-const finitePositive = v => Number.isFinite(Number(v)) && Number(v) > 0;
-function validOHLC(k) {
-  if (!Array.isArray(k) || k.length < 7) return null;
-  const [ts, o, h, l, c, v, closeTs] = k;
-  if (![o, h, l, c].every(finitePositive) ||
-      !Number.isFinite(Number(v)) || Number(v) < 0 ||
-      !Number.isFinite(Number(ts))) return null;
-  if (Number(h) < Math.max(Number(o), Number(c)) || Number(l) > Math.min(Number(o), Number(c))) return null;
-  return { t: Number(ts), o: Number(o), h: Number(h), l: Number(l), c: Number(c),
-    v: Number(v), closed: Number(closeTs) < Date.now() };
+const positive=v=>Number.isFinite(Number(v))&&Number(v)>0;
+export function normalizeCandles(rows,seconds,now=Date.now()) {
+  if(!Array.isArray(rows)||rows.length<1||rows.length>1000)throw Error('Invalid OHLC response size');
+  const candles=[],seen=new Map();
+  for(const r of rows){
+    if(!Array.isArray(r)||r.length<6)throw Error('Malformed OHLC row');
+    const [rawTs,rawLow,rawHigh,rawOpen,rawClose,rawVolume]=r;
+    const [t,l,h,o,c,v]=[Number(rawTs)*1000,Number(rawLow),Number(rawHigh),Number(rawOpen),Number(rawClose),Number(rawVolume)];
+    if(!Number.isInteger(t)||t<1_600_000_000_000||t>now+seconds*1000||
+       ![l,h,o,c].every(positive)||!Number.isFinite(v)||v<0||
+       l>Math.min(o,c)||h<Math.max(o,c)||l>h)throw Error('Unverified OHLC row');
+    const prior=seen.get(t),row={t,o,h,l,c,v,closed:t+seconds*1000<=now};
+    if(prior){if(JSON.stringify({...prior,closed:false})!==JSON.stringify({...row,closed:false}))throw Error('Conflicting duplicate OHLC timestamp');continue;}
+    seen.set(t,row);candles.push(row);
+  }
+  candles.sort((a,b)=>a.t-b.t);
+  const selected=candles.slice(-240),latest=selected.at(-1);
+  if(!latest||now-latest.t>seconds*1000*6)throw Error('Stale OHLC data');
+  let missingIntervals=0;
+  for(let i=1;i<selected.length;i++){
+    const diff=selected[i].t-selected[i-1].t;
+    if(diff<seconds*1000||diff%(seconds*1000)!==0)throw Error('Unexpected candle spacing');
+    missingIntervals+=diff/(seconds*1000)-1;
+  }
+  return {candles:selected,missingIntervals,lastCandleAt:new Date(latest.t).toISOString()};
 }
-
 async function marketAPI(url) {
-  if (url.pathname === '/api/status') {
-    return json({ authenticated: true, service: 'alpha-covariance-desk', market_feed: 'Binance spot public market data', storage: 'not configured', trading: 'disabled' });
-  }
-  if (url.pathname === '/api/markets') {
-    const symbols = encodeURIComponent(JSON.stringify(SYMBOLS));
-    const raw = await getExchange(`ticker/24hr?symbols=${symbols}`);
-    if (!Array.isArray(raw)) throw new Error('Unexpected exchange ticker response');
-    const tickers = raw.filter(row => SYMBOLS.includes(row.symbol) && finitePositive(row.lastPrice)).map(row => ({
-      symbol: row.symbol,
-      price: Number(row.lastPrice),
-      change24h: Number.isFinite(Number(row.priceChangePercent)) ? Number(row.priceChangePercent) : null,
-      exchangeCloseTime: Number(row.closeTime) || null,
+  if(url.pathname==='/api/markets'){
+    const tickers=await Promise.all(SYMBOLS.map(async symbol=>{
+      const raw=await upstream(`/products/${symbol}/ticker`);
+      if(!positive(raw.price))throw Error('Unverified ticker price');
+      const quoteTime=typeof raw.time==='string'?Date.parse(raw.time):NaN;
+      if(!Number.isFinite(quoteTime)||quoteTime>Date.now()+60000||Date.now()-quoteTime>180000)throw Error('Stale ticker');
+      return {symbol,price:Number(raw.price),change24h:null,quoteTime:new Date(quoteTime).toISOString()};
     }));
-    if (tickers.length !== SYMBOLS.length) throw new Error('Incomplete market snapshot');
-    return json({ source: 'Binance Spot', receivedAt: new Date().toISOString(), tickers });
+    return json({source:SOURCE,quoteCurrency:'USD',receivedAt:new Date().toISOString(),tickers});
   }
-  if (url.pathname === '/api/candles') {
-    const symbol = url.searchParams.get('symbol') || '';
-    const interval = url.searchParams.get('interval') || '1m';
-    if (!SYMBOLS.includes(symbol) || !INTERVALS.has(interval)) return json({ error: 'Unsupported symbol or interval' }, 400);
-    const raw = await getExchange(`klines?symbol=${symbol}&interval=${interval}&limit=240`);
-    if (!Array.isArray(raw)) throw new Error('Unexpected exchange candles response');
-    const candles = raw.map(validOHLC);
-    if (!candles.length || candles.some(k => k === null)) throw new Error('Invalid candle data');
-    for (let i = 1; i < candles.length; i++) if (candles[i].t <= candles[i - 1].t) throw new Error('Non-monotonic timestamps');
-    return json({ source: 'Binance Spot', symbol, interval, receivedAt: new Date().toISOString(), candles });
+  if(url.pathname==='/api/candles'){
+    const symbol=url.searchParams.get('symbol'),interval=url.searchParams.get('interval')||'1m';
+    if(!SYMBOLS.includes(symbol)||!Object.hasOwn(INTERVALS,interval))return fail(400,'INVALID_INSTRUMENT','Unsupported symbol or interval');
+    const seconds=INTERVALS[interval],end=new Date(),start=new Date(end.getTime()-230*seconds*1000);
+    const path=`/products/${symbol}/candles?granularity=${seconds}&start=${encodeURIComponent(start.toISOString())}&end=${encodeURIComponent(end.toISOString())}`;
+    const raw=await upstream(path);
+    const normalized=normalizeCandles(raw,seconds);
+    return json({source:SOURCE,quoteCurrency:'USD',symbol,interval,receivedAt:new Date().toISOString(),...normalized});
   }
-  return json({ error: 'Not found' }, 404);
+  return fail(404,'NOT_FOUND','Unknown market route');
+}
+function validateStrategy(body) {
+  if(!body||typeof body!=='object'||Array.isArray(body))throw Error('Invalid strategy');
+  const keys=['name','hypothesis','universe','signal_family','entry_logic','exit_logic','risk_controls','parameters','references'];
+  const data={};
+  for(const k of keys)data[k]=body[k];
+  for(const k of ['name','hypothesis','universe','signal_family','entry_logic','exit_logic','risk_controls']){
+    if(typeof data[k]!=='string'||data[k].trim().length<3||data[k].length>(k==='name'?100:2500))throw Error(`Invalid ${k}`);
+    data[k]=data[k].trim();
+  }
+  if(!['moving_average_cross','mean_reversion','momentum','custom_research'].includes(data.signal_family))throw Error('Unsupported strategy family');
+  if(!data.parameters||typeof data.parameters!=='object'||Array.isArray(data.parameters)||
+      JSON.stringify(data.parameters).length>6000||Object.keys(data.parameters).length>40)throw Error('Invalid parameters');
+  if(!Array.isArray(data.references)||data.references.length>12||data.references.some(x=>typeof x!=='string'||x.length>350||!/^https:\/\//.test(x)))throw Error('Invalid references');
+  return data;
+}
+async function readJson(request) {
+  if(!(request.headers.get('content-type')||'').toLowerCase().startsWith('application/json'))throw Error('Content type must be application/json');
+  const raw=await request.text();if(raw.length>14000)throw Error('Request too large');
+  return JSON.parse(raw);
+}
+const snapshot=row=>({name:row.name,hypothesis:row.hypothesis,universe:row.universe,signal_family:row.signal_family,entry_logic:row.entry_logic,exit_logic:row.exit_logic,risk_controls:row.risk_controls,parameters:row.parameters,references:row.references});
+function unpack(row){return {...row,parameters:JSON.parse(row.parameters_json),references:JSON.parse(row.references_json)};}
+async function strategyAPI(request,url,env,user){
+  if(!user.owner)return fail(403,'OWNER_ONLY','Strategy records are restricted to the research owner');
+  if(!env.RESEARCH_DB)return fail(503,'STORAGE_NOT_CONFIGURED','Research database is not configured');
+  const db=env.RESEARCH_DB,parts=url.pathname.split('/').filter(Boolean);
+  try{
+    if(parts.length===2&&request.method==='GET'){
+      const rs=await db.prepare('SELECT * FROM strategy_registry WHERE owner_email = ? ORDER BY updated_at DESC LIMIT 100').bind(user.email).all();
+      return json({strategies:(rs.results||[]).map(unpack),storage:'D1',trading:'disabled'});
+    }
+    if(parts.length===2&&request.method==='POST'){
+      const data=validateStrategy(await readJson(request)),id=crypto.randomUUID(),now=new Date().toISOString();
+      await db.batch([
+        db.prepare(`INSERT INTO strategy_registry (id,owner_email,name,hypothesis,universe,signal_family,entry_logic,exit_logic,risk_controls,parameters_json,references_json,status,version,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,'draft',1,?,?)`).bind(id,user.email,data.name,data.hypothesis,data.universe,data.signal_family,data.entry_logic,data.exit_logic,data.risk_controls,JSON.stringify(data.parameters),JSON.stringify(data.references),now,now),
+        db.prepare('INSERT INTO strategy_versions (id,strategy_id,version,snapshot_json,created_at) VALUES (?,?,1,?,?)').bind(crypto.randomUUID(),id,JSON.stringify(snapshot(data)),now),
+        db.prepare('INSERT INTO strategy_events (id,strategy_id,actor,event_type,created_at,details_json) VALUES (?,?,?,?,?,?)').bind(crypto.randomUUID(),id,user.email,'created',now,'{}')
+      ]);
+      return json({id,version:1,status:'draft'},201);
+    }
+    const id=parts[2];
+    if(parts.length===3&&request.method==='GET'){
+      const row=await db.prepare('SELECT * FROM strategy_registry WHERE id=? AND owner_email=?').bind(id,user.email).first();
+      if(!row)return fail(404,'NOT_FOUND','No strategy found');
+      const versions=await db.prepare('SELECT version, snapshot_json, created_at FROM strategy_versions WHERE strategy_id=? ORDER BY version DESC').bind(id).all();
+      const events=await db.prepare('SELECT event_type, created_at, details_json FROM strategy_events WHERE strategy_id=? ORDER BY created_at DESC').bind(id).all();
+      return json({strategy:unpack(row),versions:versions.results||[],events:events.results||[]});
+    }
+    if(parts.length===4&&parts[3]==='versions'&&request.method==='POST'){
+      const body=await readJson(request),data=validateStrategy(body),expected=Number(body.expected_version);
+      if(!Number.isInteger(expected)||expected<1)return fail(400,'INVALID_VERSION','Expected version required');
+      const now=new Date().toISOString(),v=expected+1,vid=crypto.randomUUID();
+      const results=await db.batch([
+        db.prepare(`UPDATE strategy_registry SET name=?,hypothesis=?,universe=?,signal_family=?,entry_logic=?,exit_logic=?,risk_controls=?,parameters_json=?,references_json=?,version=?,updated_at=? WHERE id=? AND owner_email=? AND version=? AND status='draft'`).bind(data.name,data.hypothesis,data.universe,data.signal_family,data.entry_logic,data.exit_logic,data.risk_controls,JSON.stringify(data.parameters),JSON.stringify(data.references),v,now,id,user.email,expected),
+        db.prepare('INSERT INTO strategy_versions (id,strategy_id,version,snapshot_json,created_at) SELECT ?,id,?,?,? FROM strategy_registry WHERE id=? AND owner_email=? AND version=? AND changes()>0').bind(vid,v,JSON.stringify(snapshot(data)),now,id,user.email,v),
+        db.prepare('INSERT INTO strategy_events (id,strategy_id,actor,event_type,created_at,details_json) SELECT ?,id,?,?,?,? FROM strategy_registry WHERE id=? AND owner_email=? AND version=? AND EXISTS(SELECT 1 FROM strategy_versions WHERE id=?)').bind(crypto.randomUUID(),user.email,'revised',now,JSON.stringify({version:v}),id,user.email,v,vid)
+      ]);
+      if(!results[0]?.meta?.changes)return fail(409,'VERSION_CONFLICT','Strategy is changed, archived or unavailable');
+      return json({id,version:v,status:'draft'});
+    }
+    if(parts.length===4&&parts[3]==='archive'&&request.method==='POST'){
+      const body=await readJson(request),reason=body?.reason;
+      if(typeof reason!=='string'||reason.trim().length<4||reason.length>1000)return fail(400,'INVALID_REASON','Archive rationale required');
+      const now=new Date().toISOString(),eventId=crypto.randomUUID();
+      const results=await db.batch([
+        db.prepare(`UPDATE strategy_registry SET status='archived',archived_at=?,updated_at=? WHERE id=? AND owner_email=? AND status='draft'`).bind(now,now,id,user.email),
+        db.prepare(`INSERT INTO strategy_events (id,strategy_id,actor,event_type,created_at,details_json) SELECT ?,id,?,?,?,? FROM strategy_registry WHERE id=? AND owner_email=? AND status='archived' AND changes()>0`).bind(eventId,user.email,'archived',now,JSON.stringify({reason:reason.trim()}),id,user.email)
+      ]);
+      if(!results[0]?.meta?.changes)return fail(409,'CANNOT_ARCHIVE','Draft strategy unavailable');
+      return json({id,status:'archived'});
+    }
+    return fail(404,'NOT_FOUND','Unknown strategy route');
+  }catch(e){
+    if(e instanceof SyntaxError||/^Invalid |^Unsupported |^Content type |^Request too large/.test(e.message))return fail(400,'INVALID_RESEARCH_SPEC',e.message);
+    return fail(503,'RESEARCH_STORAGE_ERROR','Research storage is unavailable');
+  }
+}
+async function researchEngineAPI(request, url, env, user) {
+  if (!user.owner) return fail(403,'OWNER_ONLY','Historical research engine restricted to the owner');
+  const origin=String(env.RESEARCH_ENGINE_ORIGIN || '');
+  const secret=String(env.RESEARCH_ENGINE_TOKEN || '');
+  if (origin !== 'https://engine.alphacovariance.com' || secret.length < 40) {
+    return fail(503,'ENGINE_NOT_CONFIGURED','Local research engine not connected');
+  }
+  if (request.method !== 'GET' && request.method !== 'POST') return fail(405,'METHOD_NOT_ALLOWED','Engine accepts GET and POST only');
+  if (url.pathname.length > 300 || url.search.length > 500) return fail(400,'INVALID_ROUTE','Request path too long');
+  let body;
+  if (request.method === 'POST') {
+    const type=request.headers.get('content-type')||'';
+    if (!type.toLowerCase().startsWith('application/json'))return fail(415,'JSON_REQUIRED','Engine requires JSON content');
+    const declared=Number(request.headers.get('content-length')||0);
+    if (declared>5*1024*1024)return fail(413,'PAYLOAD_TOO_LARGE','Research payload exceeds 5 MB');
+    body=await request.text();
+    if (body.length > 5*1024*1024)return fail(413,'PAYLOAD_TOO_LARGE','Research payload exceeds 5 MB');
+  }
+  // The browser never receives the internal token. Reject redirects and unexpected responses.
+  const upstreamUrl=origin+url.pathname+url.search;
+  try {
+    const response=await fetch(upstreamUrl,{
+      method:request.method,redirect:'manual',
+      headers:{'X-Alpha-Engine-Token':secret,'Accept':'application/json','Content-Type':'application/json'},
+      ...(body!==undefined?{body}:{}),signal:AbortSignal.timeout(25000),
+      cf:{cacheTtl:0,cacheEverything:false}
+    });
+    if (response.status>=300 && response.status<400)return fail(502,'ENGINE_REDIRECT_BLOCKED','Unexpected research-engine redirect');
+    if (!(response.headers.get('content-type')||'').includes('application/json'))return fail(502,'ENGINE_RESPONSE_INVALID','Research engine unavailable');
+    const headers=new Headers({'content-type':'application/json; charset=utf-8','cache-control':'private, no-store',
+      'x-content-type-options':'nosniff','x-robots-tag':'noindex, nofollow, noarchive','x-ac-surface':'private-research-desk'});
+    return new Response(response.body,{status:response.status,headers});
+  }catch{return fail(503,'ENGINE_OFFLINE','Local research engine is offline or unreachable');}
 }
 
-export default {
-  async fetch(request, env) {
-    // Never serve any private content from the default workers.dev hostname.
-    const url = new URL(request.url);
-    if (url.hostname !== 'desk.alphacovariance.com') return new Response('Not found', { status: 404 });
-    try {
-      const user = await validateAccessJwt(request, env);
-      if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method not allowed', { status: 405 });
-      if (url.pathname === '/api/whoami') return json({ email: user.email });
-      if (url.pathname.startsWith('/api/')) {
-        try { return await marketAPI(url); }
-        catch (error) { return json({ error: 'Live market feed unavailable', detail: String(error.message).slice(0, 120) }, 502); }
-      }
-      const path = url.pathname === '/' ? '/index.html' : url.pathname;
-      const assetRequest = new Request(new URL(path + url.search, url.origin), request);
-      const file = await env.ASSETS.fetch(assetRequest);
-      const headers = new Headers(file.headers);
-      headers.set('cache-control', 'private, no-store');
-      headers.set('x-content-type-options', 'nosniff');
-      headers.set('referrer-policy', 'no-referrer');
-      headers.set('x-frame-options', 'DENY');
-      headers.set('content-security-policy', "default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; font-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'");
-      return new Response(file.body, { status: file.status, headers });
-    } catch (error) {
-      return new Response('Research desk access denied. Check Cloudflare Access configuration.', {
-        status: 403,
-        headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' }
-      });
-    }
+function privateHeaders(response){
+  const h=new Headers(response.headers);
+  h.set('cache-control','private, no-store');h.set('x-content-type-options','nosniff');
+  h.set('referrer-policy','no-referrer');h.set('x-frame-options','DENY');
+  h.set('x-robots-tag','noindex, nofollow, noarchive');h.set('x-ac-surface','private-research-desk');
+  h.set('content-security-policy',"default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; font-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
+  return new Response(response.body,{status:response.status,headers:h});
+}
+export default {async fetch(request,env){
+  const url=new URL(request.url);
+  if(url.hostname!==HOST)return new Response('Not found',{status:404});
+  let user;
+  try{user=await validateAccessJwt(request,env);}catch{
+    return new Response('Research Desk access denied',{status:403,headers:{'cache-control':'no-store','content-type':'text/plain'}});
   }
-};
+  if(request.method!=='GET'&&request.method!=='HEAD'&&request.method!=='POST')return fail(405,'METHOD_NOT_ALLOWED','Request method not supported');
+  if(request.method==='POST'){
+    if(request.headers.get('origin')!==url.origin)return fail(403,'ORIGIN_DENIED','Cross-origin write denied');
+  }
+  if(url.pathname==='/api/whoami'&&request.method==='GET')return json({email:user.email,role:user.owner?'owner':'researcher'});
+  if(url.pathname==='/api/status'&&request.method==='GET')return json({service:'alpha-covariance-desk',source:SOURCE,market_feed:user.owner&&env.MARKET_DATA_OWNER_DISPLAY==='enabled'?'owner-display-enabled':'restricted',data_rights:'display-only-owner-review; not licensed for algorithms or external display',storage_configured:!!env.RESEARCH_DB,execution:env.RESEARCH_ENGINE_ORIGIN==='https://engine.alphacovariance.com'?'historical-replay-configured':'disabled'});
+  if(url.pathname.startsWith('/api/strategies'))return strategyAPI(request,url,env,user);
+  if(url.pathname.startsWith('/api/engine/'))return researchEngineAPI(request,url,env,user);
+  if(url.pathname.startsWith('/api/')){
+    if(!user.owner)return fail(403,'OWNER_ONLY','Market-data access restricted pending provider rights review');
+    if(env.MARKET_DATA_OWNER_DISPLAY!=='enabled')return fail(403,'FEED_NOT_APPROVED','Market display requires a documented provider-rights check');
+    if(request.method!=='GET')return fail(405,'METHOD_NOT_ALLOWED','Market data is read-only');
+    try{return await marketAPI(url);}catch{return fail(502,'MARKET_FEED_UNAVAILABLE','Verified market data unavailable');}
+  }
+  if(request.method!=='GET'&&request.method!=='HEAD')return fail(405,'METHOD_NOT_ALLOWED','Only API write routes accept POST');
+  const path=url.pathname==='/'?'/index.html':url.pathname;
+  try{const file=await env.ASSETS.fetch(new Request(new URL(path,url.origin),request));return privateHeaders(file);}
+  catch{return new Response('Private asset unavailable',{status:503,headers:{'cache-control':'no-store'}});}
+}};

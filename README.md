@@ -1,42 +1,28 @@
-# Alpha Covariance · Website v1.0
+# Alpha Covariance — Consolidated Educational Research Release R0.5
 
-A high-contrast, editorial quantitative research website. Six principal sections, an interactive mathematical instrument, visitor inquiry workflow, and architecture for future quant applications.
+Independent quantitative research and engineering, non-commercial and educational. Source package includes the existing public website, private research Desk, Cloudflare D1 strategy registry and owner-only local historical research engine.
 
-**Status:** Implemented source; not yet connected to a live domain. No fabricated research performance claims.
+**Read [START_HERE.md](START_HERE.md) before any deployment.** The package is **not deployed**; historical dataset processing and virtual paper replay require a running WSL/local machine and optional authenticated Cloudflare Tunnel. The public site is directly link-accessible but requests `noindex`, while the private Desk remains Cloudflare Access protected.
 
-## Quick start
+## Verify source
 
 ```sh
 python build.py
-cd site
-python -m http.server 8080
+node --test tests/*.test.mjs
+python -m unittest discover -s tests_engine -v
+python -m research_engine check
 ```
 
-Then visit `http://localhost:8080`. The site requires no npm install.
+The package contains no invented live prices, trades, validated alpha results or exchange/broker connection. Quantitative tests use clearly isolated synthetic fixtures only in `tests_engine/`.
 
-## Pages
+## Main directories
 
-- `/` — editorial homepage and live synthetic correlation illustration
-- `/research/` — hypotheses, research topics, methodological standards
-- `/systems/` — engineering and quant project register
-- `/lab/` — live two-asset covariance & portfolio volatility playground
-- `/notes/` — honest, pre-publication research and technical report register
-- `/about/` — mission, scope, founder background
-- `/contact/` — public email and configurable secure visitor inquiry form
-- `/privacy/` — privacy note
+- `site/`, `build.py`: unlisted public information site and mathematical demonstrations.
+- `desk/`, `wrangler.desk.jsonc`: private Worker's signed Access verification, Coinbase owner-only/manual display gate, Research Studio and integrated Lab UI.
+- `migrations/0001_strategy_registry.sql`: Cloudflare D1 owner strategy/version/audit metadata.
+- `research_engine/`: standard-library Python engine for importing owner-entitled real historical bars, durable backtest jobs, historical paper replay, factor/portfolio risk, trade journal and markdown reports. No real execution.
+- `benchmarks/`: C++ local CPU order-book update benchmark, not network/exchange latency.
+- `tests/`, `tests_engine/`: Cloudflare Worker/JS and Python data/execution/security integration tests.
+- `docs/INTEGRATED_RELEASE_DEPLOYMENT.md`: operational runbook with rollback and market-data compliance gates.
 
-## Update text
-
-Edit `build.py`, then run `python build.py` to regenerate HTML. The generated `site/` folder is committed so hosting requires no build dependencies. Visual design tokens are defined in `site/assets/styles.css`.
-
-## Deployment
-
-See [DEPLOYMENT.md](docs/DEPLOYMENT.md) for GitHub → Cloudflare Pages → BigRock DNS and email-safe activation of the inquiry form. The CSS/UX system and architecture are described in [ARCHITECTURE.md](docs/ARCHITECTURE.md).
-
-## Important notes
-
-- The site's **numeric playground** is real analytical math with simulated visual points, not live prices.
-- Visitor messages are **not collected until** you configure Cloudflare D1 and Turnstile. A mailto alternative is displayed meanwhile.
-- The website does not provide regulated investment advice, performance guarantees, or managed investment services.
-- Two external Google Fonts are requested when online; local fallback fonts are used if they are unavailable. No third-party JS framework is required.
-- The GitHub link in the footer leads to `github.com` until your organisation URL is known. Change it to your actual verified organisation after creation.
+**Never publish credentials, research CSVs or the local SQLite runtime directory to GitHub.** Keep market-data rights specific to each provider and use. The expert review programme remains deferred until core systems are reliably deployed.
