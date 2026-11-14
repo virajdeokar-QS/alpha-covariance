@@ -1,0 +1,23 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive"><meta name="theme-color" content="#f7f9fb">
+<title>Market Terminal / Alpha Covariance</title><link rel="icon" href="/assets/desk-icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/assets/markets.css"><script src="/assets/markets.js" defer></script></head><body>
+<a class="skip" href="#main">Skip to market terminal</a>
+<header class="header"><a class="brand" href="/"><b>A/C</b><span>ALPHA COVARIANCE<small>QUANTITATIVE RESEARCH TERMINAL</small></span></a>
+<nav><a class="current" href="/markets.html">MARKETS</a><a href="/studio.html">STRATEGIES</a><a href="/laboratory.html#datasets">DATASETS</a><a href="/laboratory.html#backtests">BACKTESTS</a><a href="/review.html">EXPERT REVIEW</a></nav><span id="account">PRIVATE SESSION</span></header>
+<main id="main"><div class="section-kicker">MULTI-ASSET INSTRUMENT DIRECTORY / R1.2</div>
+<section class="heading"><div><h1>Markets</h1><p>Research universe, source-attributed observations and historical OHLC inspection. Instruments without a permitted source remain unpriced.</p></div><div class="metric"><small>REFERENCE INSTRUMENTS</small><strong id="total">200</strong><small>8 MARKETS · 25 EACH</small></div></section>
+<nav id="market-tabs" class="tabs" aria-label="Select market"></nav>
+<section class="terminal"><div class="watchlist"><div class="watch-head"><div><b id="market-label">INDIA EQUITIES</b><small id="market-source">SOURCE STATUS</small></div><label><span class="visually-hidden">Search instruments</span><input id="query" type="search" placeholder="Filter symbols or names"></label></div>
+<div class="watch-scroll"><table><thead><tr><th>INSTRUMENT</th><th>LAST</th><th>REFERENCE</th></tr></thead><tbody id="rows"></tbody></table></div>
+<div class="footnote"><span id="market-count">25 instruments</span><a href="/laboratory.html#datasets">REGISTER DATA SOURCE ↗</a></div></div>
+<div class="detail"><div class="chart-head"><div><p class="eyebrow">ACTIVE INSTRUMENT / DATA PROVENANCE</p><h2 id="instrument-title">Select an instrument</h2><p id="instrument-venue">—</p></div><div class="quote"><strong id="last-price">—</strong><small id="quote-source">NO SOURCE OBSERVATION</small></div></div>
+<div class="chart-strip"><span id="chart-mode">HISTORICAL / EXCHANGE</span><span id="chart-time">NO OBSERVATION</span><span id="chart-count">—</span></div>
+<canvas id="chart" height="360" aria-label="Source-attributed OHLC candlestick chart"></canvas>
+<div class="chart-status" id="chart-status">Select an instrument with an authorized data source to inspect its recorded candles.</div>
+<div class="bottom-grid"><div><strong>DATA LINEAGE</strong><p id="provenance">No verified source for this instrument in the current workspace.</p></div><div><strong>RESEARCH ROUTE</strong><p>Register an authorized historical dataset, document a strategy, and run it through the local research engine.</p><a href="/studio.html">OPEN STRATEGY REGISTRY ↗</a></div></div>
+</div></section>
+<section class="automation"><div><p class="eyebrow">CONTROLLED AUTOMATION / HISTORICAL</p><h2>Virtual replay control</h2><p>Resume or stop a selected, persisted historical paper session. Automatic signals evaluate only recorded bars from your own permitted dataset. No live-market orders can be sent.</p></div><div class="automation-controls"><label for="session-select">SAVED REPLAY SESSION</label><select id="session-select"><option value="">Select a saved session</option></select><div class="button-row"><button id="run-auto" disabled>START AUTO REPLAY</button><button id="halt-auto" disabled>STOP REPLAY</button><a href="/laboratory.html#paper">SESSION DETAILS ↗</a></div><small id="automation-status">Historical replay sessions are managed by the local research engine.</small></div></section>
+<div class="disclaimer">Instrument directory entries are reference identifiers, not quotes. Only sourced candles and dated observations are plotted. Historical prices are not labelled live.</div>
+</main><footer>ALPHA COVARIANCE · PRIVATE MULTI-ASSET RESEARCH <span>DATA RIGHTS · VERSION CONTROL · VIRTUAL REPLAY</span></footer>
+</body></html>

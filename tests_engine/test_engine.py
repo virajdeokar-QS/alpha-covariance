@@ -27,6 +27,14 @@ class ResearchEngineTests(unittest.TestCase):
         self.assertEqual(self.dataset['bar_count'],110)
         self.assertEqual(self.dataset['currency'],'USD')
         self.assertEqual(self.store.ingest({**META,'csv_text':sample_csv()})['id'],self.dataset['id'])
+    def test_source_attributed_candlestick_chart_is_recorded_only(self):
+        payload, code=handle(self.store,'GET','/api/engine/datasets/'+self.dataset['id']+'/bars',{})
+        self.assertEqual(code,200)
+        self.assertEqual(payload['checksum'],self.dataset['checksum'])
+        self.assertEqual(len(payload['bars']),110)
+        self.assertEqual(payload['bars'][0],self.store.bars(self.dataset)[0])
+        self.assertEqual(payload['source'],'owner_registered_historical_dataset')
+
     def test_cannot_import_without_rights(self):
         with self.assertRaises(InputError):self.store.ingest({**META,'csv_text':sample_csv(), 'allowed_uses':{}})
     def test_no_synthetic_gap_fill(self):

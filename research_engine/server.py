@@ -21,6 +21,7 @@ def handle(store, method, path, body):
     if method=='GET':
         if end==['status']:return store.state(),200
         if end==['datasets']:return {'datasets':store.datasets()},200
+        if len(end)==3 and end[0]=='datasets' and end[2]=='bars':return store.chart_bars(end[1]),200
         if end==['backtests']:return {'jobs':store.jobs()},200
         if end==['paper']:return {'sessions':store.papers()},200
         if end==['analytics','factors']:

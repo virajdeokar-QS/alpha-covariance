@@ -1,3 +1,11 @@
+# Alpha Covariance — R1.2 research workbench candidate
+
+**Not deployed.** This source extends the deployed R0.5 private Desk with a high-density market directory, linked strategy/backtest navigation, source-attributed historical charts, virtual replay controls, D1 run references, and five time-limited expert-review slots. Market reference lists are **not** licensed live quotes.
+
+Read [`docs/RELEASE_R12_DEPLOYMENT.md`](docs/RELEASE_R12_DEPLOYMENT.md) before applying changes. Reviewer slots require real verified email inboxes and Cloudflare Access; **no passwords are stored in D1**. The local engine must be deliberately connected to enable historical backtesting and paper replay. The public site remains separately deployed and unlisted via `noindex`.
+
+---
+
 # Alpha Covariance — Consolidated Educational Research Release R0.5
 
 Independent quantitative research and engineering, non-commercial and educational. Source package includes the existing public website, private research Desk, Cloudflare D1 strategy registry and owner-only local historical research engine.

@@ -44,7 +44,7 @@ function updateSessions(){
 function renderQuotes(){
   if(state.market!=='crypto'){
     const sector={india:'Indian equities',us:'US equities',hongkong:'Hong Kong equities',london:'United Kingdom equities',europe:'European equities',fx:'Foreign exchange'}[state.market]||'Unconnected instruments';
-    $('instrument-rows').innerHTML=`<tr><td colspan="6" class="loading-row">${sector}: a licensed verified price feed is not connected. No prices are displayed.</td></tr>`;
+    $('instrument-rows').innerHTML=`<tr><td colspan="6" class="loading-row">${sector}: no entitled quote source currently attached. Instruments remain available for research navigation.</td></tr>`;
     return;
   }
   if(!state.quotes){$('instrument-rows').innerHTML='<tr><td colspan="6" class="loading-row">Verified quotes unavailable. No estimates or cached market prices are displayed.</td></tr>';return}
@@ -90,15 +90,15 @@ function navigate(){
   $('rail').classList.remove('open');
   if(key==='terminal'){
     $('terminal-title').textContent=state.symbol.slice(0,-4)+' / USD';
-    $('terminal-subtitle').textContent=`Coinbase Exchange · Public market data · ${state.interval} candles`;
+    $('terminal-subtitle').textContent=`Coinbase Exchange · Owner-scoped observations · ${state.interval} candles`;
     renderPrice();refreshCandles(true);
     refreshStrategySummary();
   } else if(!['overview','terminal'].includes(key))renderFuture(key);
 }
 const futureInfo={
   strategies:['STRATEGY REGISTRY','Registration, versions and lifecycle','Research proposals will enter evaluation with provenance, author, description, parameter schema and version. Advancement to validated alpha will require recorded out-of-sample evidence.'],
-  backtests:['BACKTEST STUDIO','Experiment orchestration','A future queued backtest worker will run independently of the browser, save immutable runs and compute costs, drawdowns, turnover and validation statistics. No backtest engine is connected yet.'],
-  execution:['PAPER EXECUTION','Simulation without a broker','Paper orders, fill events, stop controls, idempotency and risk limits will be added as a separate always-on service. No simulated or real orders execute in this release.'],
+  backtests:['BACKTEST STUDIO','Historical experiment queue','Authorized historical experiments run on the private local engine when started. Each run records immutable dataset provenance, strategy revision, costs and risk metrics.'],
+  execution:['PAPER EXECUTION','Virtual historical replay','Recorded virtual orders, fill events, stop and resume controls, and risk limits are available through the owner-controlled local research engine.'],
   history:['TRADE JOURNAL','Auditable order and fill history','Manual and automated orders, P&L attribution, fees, profitable/losing filters and reconciliation will derive only from recorded events. There is no recorded history yet.'],
   research:['RESEARCH LIBRARY','Paper-driven research registry','Hypotheses, linked publications, code revisions, datasets, data rights and experiment lineage will be added when the first validated research artifact is ready.']
 };

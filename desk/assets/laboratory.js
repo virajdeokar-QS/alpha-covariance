@@ -1,6 +1,7 @@
 /* Alpha Covariance private education-only research lab. No broker, no synthetic price rows. */
 'use strict';
 const $=id=>document.getElementById(id);
+const preselected=new URLSearchParams(location.search).get('strategy');
 const state={strategies:[],datasets:[],jobs:[],papers:[],paper:null,job:null,view:'datasets',isOwner:false,engine:false};
 const panels=['datasets','backtests','paper','journal','analytics'];
 const text=(tag,v,cls)=>{const el=document.createElement(tag);el.textContent=v===null||v===undefined?'—':String(v);if(cls)el.className=cls;return el;};
@@ -29,21 +30,55 @@ function renderSelections(){
     const old=el.value;clear(el);el.append(opt('','Select a documented strategy draft'));
     for(const s of eligible)el.append(opt(s.id,`${s.name} · v${s.version} · ${s.signal_family}`));
     if(eligible.some(s=>s.id===old))el.value=old;
+    else if(preselected&&eligible.some(s=>s.id===preselected))el.value=preselected;
+  }
+  for(const el of document.querySelectorAll('.market-select')){
+    const old=el.value,markets=[...new Set(state.datasets.map(d=>d.venue))].sort();
+    clear(el);el.append(opt('','Choose an authorised source venue'));
+    for(const market of markets)el.append(opt(market,market));
+    if(markets.includes(old))el.value=old;else if(markets.length===1)el.value=markets[0];
   }
   for(const el of document.querySelectorAll('.dataset-select')){
     const old=el.value;clear(el);el.append(opt('','Select an authorised historical dataset'));
-    for(const d of state.datasets)el.append(opt(d.id,`${d.symbol} / ${d.currency} · ${d.provider} · ${d.bar_count} bars`));
+    const venue=el.closest('form')?.querySelector('.market-select')?.value||'';
+    for(const d of state.datasets.filter(d=>!venue||d.venue===venue))el.append(opt(d.id,`${d.symbol} / ${d.currency} · ${d.provider} · ${d.bar_count} bars`));
     if(state.datasets.some(d=>d.id===old))el.value=old;
   }
   const target=$('portfolio-choices');clear(target);
   if(!state.datasets.length)target.append(text('p','No licensed historical datasets registered.','empty'));
   for(const d of state.datasets){const label=text('label',`${d.symbol} · ${d.currency} · ${d.interval_seconds}s`,'portfolio-choice');const c=document.createElement('input');c.type='checkbox';c.value=d.id;c.name='dataset_ids';label.prepend(c);target.append(label);}
 }
+async function viewDatasetChart(id){
+  const label=$('dataset-chart-source'),canvas=$('dataset-ohlc');
+  if(!canvas||!id)return;
+  label.textContent='Fetching registered, source-attributed OHLC bars';
+  try{
+    const result=await engine('datasets/'+encodeURIComponent(id)+'/bars');
+    const bars=result.bars;
+    if(!Array.isArray(bars)||bars.length<5)throw Error('Insufficient recorded observations');
+    const dpr=Math.min(window.devicePixelRatio||1,2),w=Math.max(400,canvas.getBoundingClientRect().width||600),h=270;
+    canvas.width=Math.round(w*dpr);canvas.height=h*dpr;
+    const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);ctx.fillStyle='#111c22';ctx.fillRect(0,0,w,h);
+    const max=Math.max(...bars.map(b=>b.high)),min=Math.min(...bars.map(b=>b.low));
+    const span=Math.max(0.001,max-min),x=i=>40+(w-82)*(i+0.5)/bars.length;
+    const y=v=>20+(h-44)*(max-v)/span;
+    ctx.strokeStyle='#25343e';ctx.lineWidth=1;
+    for(let i=0;i<5;i++){const yy=20+(h-44)*i/4;ctx.beginPath();ctx.moveTo(28,yy);ctx.lineTo(w-26,yy);ctx.stroke()}
+    const bodyWidth=Math.max(1,(w-82)/bars.length*0.65);
+    bars.forEach((b,i)=>{const xx=x(i),up=b.close>=b.open;ctx.strokeStyle=up?'#4fc5a4':'#e66c72';ctx.fillStyle=ctx.strokeStyle;
+      ctx.beginPath();ctx.moveTo(xx,y(b.high));ctx.lineTo(xx,y(b.low));ctx.stroke();
+      ctx.fillRect(xx-bodyWidth/2,Math.min(y(b.open),y(b.close)),bodyWidth,Math.max(1,Math.abs(y(b.close)-y(b.open))));
+    });
+    ctx.fillStyle='#aab6c1';ctx.font='11px monospace';ctx.fillText(max.toFixed(2),w-75,14);ctx.fillText(min.toFixed(2),w-75,h-10);
+    label.textContent=result.symbol+' / '+result.currency+' · '+result.provider+' · '+bars.length+' recorded OHLC bars · SHA256 '+result.checksum.slice(0,12)+'…';
+  }catch(error){label.textContent='Chart unavailable: '+error.message;const ctx=canvas.getContext('2d');ctx?.clearRect(0,0,canvas.width,canvas.height)}
+}
 function renderDatasets(){
   const host=$('datasets-list');clear(host);
   if(!state.datasets.length){host.append(text('p','No permitted datasets are registered. The engine does not generate demonstration market prices.','empty'));return}
   for(const d of state.datasets){
     const row=text('div','','dataset-item');row.append(text('strong',`${d.symbol} · ${d.currency} / ${d.venue}`));
+    const chart=text('button','VIEW RECORDED CHART →','ghost');chart.type='button';chart.addEventListener('click',()=>viewDatasetChart(d.id));row.append(chart);
     row.append(text('small',`${d.provider} · ${d.bar_count} historical bars · ${d.interval_seconds}s · ${date(d.first_at)} → ${date(d.last_at)}`));
     row.append(text('small',`SHA256 ${d.checksum.slice(0,18)}… · Evidence ${d.rights_reference}`));host.append(row);
   }
@@ -146,13 +181,17 @@ async function refresh(){
     if(!state.isOwner){notice('Research engine is owner-only. Private reviewer and team access requires separate data rights.',true);return}
   }catch(e){notice('Cloudflare authentication unavailable: '+e.message,true);return}
   try{const status=await engine('status');state.engine=true;$('engine-status').textContent='ENGINE CONNECTED / HISTORICAL ONLY';document.querySelector('.health-dot').classList.add('online');}
-  catch(e){state.engine=false;$('engine-status').textContent='ENGINE OFFLINE';document.querySelector('.health-dot').classList.remove('online');notice('Local engine unavailable: '+e.message+'. The Desk remains protected; no fabricated data shown.',true);return}
+  catch(e){state.engine=false;$('engine-status').textContent='LOCAL SERVICE / INACTIVE';document.querySelector('.health-dot').classList.remove('online');notice('Historical research service is inactive: '+e.message+'. Dataset and strategy records remain preserved.',true);return}
   try{
     const [d,s,j,p]=await Promise.all([engine('datasets'),api('/api/strategies'),engine('backtests'),engine('paper')]);
     state.datasets=d.datasets;state.strategies=s.strategies;state.jobs=j.jobs;state.papers=p.sessions;
     renderSelections();renderDatasets();renderJobs();renderPapers();notice('Research engine connected · authenticated owner · authorised historical datasets only · no live broker integration.');
     if(state.paper){const fresh=state.papers.find(x=>x.id===state.paper.id);if(fresh)await selectPaper(fresh.id)}
     if(state.job&&state.view==='backtests')await selectJob(state.job);
+    const linkedJob=new URLSearchParams(location.search).get('run');
+    if(!state.job&&linkedJob&&state.jobs.some(j=>j.id===linkedJob)&&state.view==='backtests')await selectJob(linkedJob);
+    const linkedPaper=new URLSearchParams(location.search).get('paper');
+    if(!state.paper&&linkedPaper&&state.papers.some(p=>p.id===linkedPaper)&&state.view==='paper')await selectPaper(linkedPaper);
   }catch(e){notice('Research metadata unavailable: '+e.message,true)}
 }
 async function submitDataset(e){e.preventDefault();const btn=e.currentTarget.querySelector('button[type=submit]');btn.disabled=true;
@@ -197,6 +236,7 @@ async function factors(e){e.preventDefault();try{
 function init(){
   for(const link of document.querySelectorAll('.view-control'))link.addEventListener('click',e=>{e.preventDefault();showView(link.dataset.view)});
   window.addEventListener('hashchange',()=>showView(location.hash.slice(1)));
+  for(const market of document.querySelectorAll('.market-select'))market.addEventListener('change',renderSelections);
   $('dataset-form').addEventListener('submit',submitDataset);$('backtest-form').addEventListener('submit',submitBacktest);
   $('paper-form').addEventListener('submit',submitPaper);$('portfolio-form').addEventListener('submit',portfolio);$('factors-form').addEventListener('submit',factors);
   $('journal-filter').addEventListener('change',renderJournal);

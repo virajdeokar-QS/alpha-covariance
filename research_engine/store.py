@@ -111,6 +111,17 @@ class ResearchStore:
     def datasets(self):
         with self.conn() as db:return [self._dataset(r) for r in db.execute('SELECT * FROM datasets ORDER BY created_at DESC')]
 
+    def chart_bars(self, dataset_id: str, limit: int = 180):
+        # Source-authenticated OHLC only. Never manufacture or interpolate a candle.
+        d = self.get_dataset(dataset_id, 'historical_storage')
+        if not isinstance(limit, int) or limit < 5 or limit > 240:
+            raise InputError('Chart limit must be between 5 and 240')
+        candles = self.bars(d)[-limit:]
+        return {'dataset_id':d['id'], 'symbol':d['symbol'], 'currency':d['currency'],
+                'provider':d['provider'], 'venue':d['venue'], 'checksum':d['checksum'],
+                'interval_seconds':d['interval_seconds'], 'bars':candles,
+                'source':'owner_registered_historical_dataset'}
+
     def get_dataset(self,id,required_use):
         with self.conn() as db:r=db.execute('SELECT * FROM datasets WHERE id=?',(id,)).fetchone()
         if not r:raise InputError('Dataset not found')

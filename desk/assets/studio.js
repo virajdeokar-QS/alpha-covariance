@@ -1,6 +1,6 @@
 'use strict';
 const $=id=>document.getElementById(id);
-const state={records:[],selected:null,editing:null,version:null};
+const state={records:[],selected:null,editing:null,version:null,role:'restricted'};
 async function api(path,options={}){
   const response=await fetch(path,{cache:'no-store',credentials:'same-origin',...options});
   const result=await response.json().catch(()=>({error:'INVALID_RESPONSE',message:'Unexpected service response'}));
@@ -42,9 +42,39 @@ async function selectRecord(id){
     info(dl,'RISK CONTROLS',s.risk_controls);info(dl,'PARAMETERS',JSON.stringify(s.parameters,null,2));
     info(dl,'RESEARCH REFERENCES',s.references.join('\n')||'None supplied');
     info(dl,'AUDIT HISTORY',`${data.versions.length} preserved versions · ${data.events.length} lifecycle events`);
+    info(dl,'RESEARCH RUN INDEX',`${(data.runs||[]).length} linked historical backtest or virtual replay sessions`);
+    info(dl,'EXPERT ASSESSMENTS',`${(data.reviews||[]).length} attributed notes visible to this account`);
     info(dl,'UPDATED',date(s.updated_at));
+    for(const r of (data.runs||[])){
+      const link=el('a',`${r.run_type.toUpperCase()} · V${r.strategy_version} · ${date(r.created_at)} →`,'workflow-link');
+      link.href='/laboratory.html?'+(r.run_type==='paper'?'paper':'run')+'='+encodeURIComponent(r.engine_job_id)+'#'+(r.run_type==='paper'?'paper':'backtests');panel.append(link);
+    }
+    for(const r of (data.reviews||[])){
+      const entry=el('p',`${r.recommendation.toUpperCase()} · V${r.strategy_version} · ${date(r.created_at)} · ${r.note}`,'review-note');panel.append(entry);
+    }
     panel.append(dl);
-    if(s.status==='draft'){
+    if(state.role==='reviewer'){
+      const panelTitle=el('h3','Reviewer assessment');panel.append(panelTitle);
+      const form=document.createElement('form');form.className='review-form';
+      const choice=document.createElement('select');choice.setAttribute('aria-label','Recommendation');
+      for(const [v,name] of [['evaluate','Proceed to evaluation'],['revise','Request revision'],['reject','Do not advance']]){
+        const o=document.createElement('option');o.value=v;o.textContent=name;choice.append(o);
+      }
+      const note=document.createElement('textarea');note.required=true;note.minLength=12;note.maxLength=2000;note.rows=4;note.placeholder='Evidence-based review: strengths, risks, limitations, next tests';
+      const submit=el('button','SUBMIT RECORDED REVIEW');submit.type='submit';
+      form.append(choice,note,submit);form.addEventListener('submit',async event=>{
+        event.preventDefault();submit.disabled=true;
+        try{await api('/api/reviews',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({strategy_id:s.id,recommendation:choice.value,note:note.value})});
+          notice('Review saved with the exact strategy revision and your verified identity.');note.value='';}
+        catch(error){notice(error.message,true)}finally{submit.disabled=false;}
+      });panel.append(form);
+    }
+    if(s.status==='draft'&&state.role==='owner'){
+      if(s.signal_family!=='custom_research'){
+        const run=el('a','RUN BACKTEST →','ghost workflow-link');run.href='/laboratory.html?strategy='+encodeURIComponent(s.id)+'#backtests';panel.append(run);
+        const paper=el('a','CREATE PAPER REPLAY →','ghost workflow-link');paper.href='/laboratory.html?strategy='+encodeURIComponent(s.id)+'#paper';panel.append(paper);
+      }
+
       const edit=el('button','EDIT DRAFT / CREATE REVISION','ghost');edit.type='button';edit.addEventListener('click',()=>editRecord(s));panel.append(edit);
       const archive=el('button','ARCHIVE DRAFT','ghost');archive.style.marginLeft='10px';archive.type='button';archive.addEventListener('click',()=>archiveRecord(s));panel.append(archive);
     }
@@ -97,9 +127,13 @@ async function save(e){
 }
 async function start(){
   $('research-form').addEventListener('submit',save);$('reload').addEventListener('click',refresh);$('new-record').addEventListener('click',resetEditor);
-  try{const u=await api('/api/whoami');$('session-identity').textContent=u.role==='owner'?'OWNER / '+u.email:'RESEARCHER / RESTRICTED';
-    if(u.role!=='owner'){$('research-form').querySelectorAll('input,select,textarea,button').forEach(n=>n.disabled=true);$('form-state').textContent='OWNER PERMISSION REQUIRED';}
+  try{const u=await api('/api/whoami');state.role=u.role;$('session-identity').textContent=u.role.toUpperCase()+' / '+u.email;
+    if(u.role!=='owner'){$('research-form').querySelectorAll('input,select,textarea,button').forEach(n=>n.disabled=true);$('form-state').textContent=u.role==='reviewer'?'REVIEW-ONLY SESSION':'OWNER PERMISSION REQUIRED';}
   }catch{$('session-identity').textContent='SESSION UNAVAILABLE';}
   await refresh();
+  if(state.role==='owner'){
+    try{await api('/api/engine/status');$('engine-state').textContent='HISTORICAL / READY';}
+    catch{$('engine-state').textContent='LOCAL / INACTIVE';}
+  }else $('engine-state').textContent='OWNER CONTROLLED';
 }
 document.addEventListener('DOMContentLoaded',start);

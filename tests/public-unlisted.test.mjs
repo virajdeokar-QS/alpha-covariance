@@ -13,7 +13,7 @@ test('all public HTML pages declare noindex and preserve direct-link navigation'
 });
 test('Cloudflare static assets emit noindex headers and public surface fingerprint', () => {
   const h = r('site/_headers');
-  assert.match(h, /\/\*\n\s*X-Robots-Tag: noindex, nofollow, noarchive, nosnippet/);
+  assert.match(h, /\/\*\r?\n\s*X-Robots-Tag: noindex, nofollow, noarchive, nosnippet/);
   assert.match(h, /X-AC-Surface: public-unlisted/);
 });
 test('unlisted site does not publish a sitemap; crawlers may see noindex', () => {

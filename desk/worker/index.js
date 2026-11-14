@@ -134,12 +134,14 @@ async function readJson(request) {
 const snapshot=row=>({name:row.name,hypothesis:row.hypothesis,universe:row.universe,signal_family:row.signal_family,entry_logic:row.entry_logic,exit_logic:row.exit_logic,risk_controls:row.risk_controls,parameters:row.parameters,references:row.references});
 function unpack(row){return {...row,parameters:JSON.parse(row.parameters_json),references:JSON.parse(row.references_json)};}
 async function strategyAPI(request,url,env,user){
-  if(!user.owner)return fail(403,'OWNER_ONLY','Strategy records are restricted to the research owner');
+  if(!user.owner && user.role!=='reviewer')return fail(403,'RESTRICTED','Reviewer membership required');
+  if(!user.owner && request.method!=='GET')return fail(403,'READ_ONLY','Reviewers cannot change research specifications');
   if(!env.RESEARCH_DB)return fail(503,'STORAGE_NOT_CONFIGURED','Research database is not configured');
   const db=env.RESEARCH_DB,parts=url.pathname.split('/').filter(Boolean);
+  const ownerEmail=user.owner?user.email:String(env.FEED_OWNER_EMAIL||'').trim().toLowerCase();
   try{
     if(parts.length===2&&request.method==='GET'){
-      const rs=await db.prepare('SELECT * FROM strategy_registry WHERE owner_email = ? ORDER BY updated_at DESC LIMIT 100').bind(user.email).all();
+      const rs=await db.prepare('SELECT * FROM strategy_registry WHERE owner_email = ? ORDER BY updated_at DESC LIMIT 100').bind(ownerEmail).all();
       return json({strategies:(rs.results||[]).map(unpack),storage:'D1',trading:'disabled'});
     }
     if(parts.length===2&&request.method==='POST'){
@@ -153,11 +155,17 @@ async function strategyAPI(request,url,env,user){
     }
     const id=parts[2];
     if(parts.length===3&&request.method==='GET'){
-      const row=await db.prepare('SELECT * FROM strategy_registry WHERE id=? AND owner_email=?').bind(id,user.email).first();
+      const row=await db.prepare('SELECT * FROM strategy_registry WHERE id=? AND owner_email=?').bind(id,ownerEmail).first();
       if(!row)return fail(404,'NOT_FOUND','No strategy found');
       const versions=await db.prepare('SELECT version, snapshot_json, created_at FROM strategy_versions WHERE strategy_id=? ORDER BY version DESC').bind(id).all();
       const events=await db.prepare('SELECT event_type, created_at, details_json FROM strategy_events WHERE strategy_id=? ORDER BY created_at DESC').bind(id).all();
-      return json({strategy:unpack(row),versions:versions.results||[],events:events.results||[]});
+      let runLinks=[],reviewNotes=[];
+      try{const rs=await db.prepare('SELECT run_type,engine_job_id,dataset_id,strategy_version,created_at FROM research_run_links WHERE strategy_id=? ORDER BY created_at DESC LIMIT 25').bind(id).all();runLinks=rs.results||[];}catch{ /* pre-R1.2 database: no index yet */ }
+      try{const rs=user.owner?
+        await db.prepare('SELECT reviewer_email,strategy_version,recommendation,note,created_at FROM review_feedback WHERE strategy_id=? ORDER BY created_at DESC LIMIT 40').bind(id).all():
+        await db.prepare('SELECT reviewer_email,strategy_version,recommendation,note,created_at FROM review_feedback WHERE strategy_id=? AND reviewer_email=? ORDER BY created_at DESC LIMIT 40').bind(id,user.email).all();
+        reviewNotes=rs.results||[];}catch{ /* older D1 migration */ }
+      return json({strategy:unpack(row),versions:versions.results||[],events:events.results||[],runs:runLinks,reviews:reviewNotes});
     }
     if(parts.length===4&&parts[3]==='versions'&&request.method==='POST'){
       const body=await readJson(request),data=validateStrategy(body),expected=Number(body.expected_version);
@@ -188,6 +196,82 @@ async function strategyAPI(request,url,env,user){
     return fail(503,'RESEARCH_STORAGE_ERROR','Research storage is unavailable');
   }
 }
+
+// Only Cloudflare Access-authenticated emails explicitly assigned to a non-expired
+// reviewer slot can read research. No password or login secret is stored in D1.
+async function grantRole(user,env){
+  if(user.owner)return {...user,role:'owner',reviewerSlot:null};
+  if(!env.RESEARCH_DB)return {...user,role:'restricted',reviewerSlot:null};
+  try{
+    const slot=await env.RESEARCH_DB.prepare('SELECT slot FROM reviewer_slots WHERE reviewer_email=? AND expires_at>?')
+      .bind(user.email,new Date().toISOString()).first();
+    if(slot)return {...user,role:'reviewer',reviewerSlot:slot.slot};
+  }catch{ /* migration absent: deny by default */ }
+  return {...user,role:'restricted',reviewerSlot:null};
+}
+async function reviewerAPI(request,url,env,user){
+  if(!env.RESEARCH_DB)return fail(503,'STORAGE_NOT_CONFIGURED','Review registry unavailable');
+  const db=env.RESEARCH_DB,now=new Date().toISOString();
+  if(url.pathname==='/api/reviewers'){
+    if(!user.owner)return fail(403,'OWNER_ONLY','Reviewer administration restricted');
+    if(request.method==='GET'){
+      try{const r=await db.prepare('SELECT slot, reviewer_email, expires_at, assigned_at FROM reviewer_slots ORDER BY slot').all();
+        return json({slots:r.results||[],login:'Cloudflare Access OTP',passwords_stored:false});}
+      catch{return fail(503,'STORAGE_ERROR','Reviewer registry unavailable');}
+    }
+    if(request.method==='POST'){
+      try{
+        const body=await readJson(request),slot=Number(body.slot),email=body.email===null?null:String(body.email||'').trim().toLowerCase();
+        if(!Number.isInteger(slot)||slot<1||slot>5)return fail(400,'INVALID_SLOT','Slot must be between 1 and 5');
+        if(email!==null&&(!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(email)||email.length>254||email===user.email))return fail(400,'INVALID_EMAIL','Provide a real reviewer email inbox');
+        const hours=Number(body.hours??24);
+        if(email!==null&&(!Number.isInteger(hours)||hours<1||hours>168))return fail(400,'INVALID_EXPIRY','Expiry must be 1 to 168 hours');
+        const expires=email?new Date(Date.now()+hours*3600000).toISOString():null;
+        await db.prepare('UPDATE reviewer_slots SET reviewer_email=?,expires_at=?,assigned_at=? WHERE slot=?')
+          .bind(email,expires,email?now:null,slot).run();
+        return json({slot,reviewer_email:email,expires_at:expires,requires_cloudflare_access_allowlist:true});
+      }catch(e){if(e instanceof SyntaxError)return fail(400,'INVALID_JSON','Invalid input');
+        return fail(409,'REVIEWER_ASSIGNMENT_FAILED','Slot or email conflict');}
+    }
+    return fail(405,'METHOD_NOT_ALLOWED','GET and POST only');
+  }
+  if(url.pathname==='/api/reviews'){
+    if(request.method==='GET'){
+      if(!user.owner)return fail(403,'OWNER_ONLY','Review history reserved for the owner');
+      try{const r=await db.prepare('SELECT id,slot,reviewer_email,strategy_id,strategy_version,recommendation,note,created_at FROM review_feedback ORDER BY created_at DESC LIMIT 200').all();
+        return json({reviews:r.results||[]});}
+      catch{return fail(503,'STORAGE_ERROR','Review history unavailable');}
+    }
+    if(request.method==='POST'){
+      if(user.role!=='reviewer')return fail(403,'REVIEWER_ONLY','Valid reviewer appointment required');
+      try{
+        const body=await readJson(request),id=String(body.strategy_id||''),recommendation=String(body.recommendation||''),note=String(body.note||'').trim();
+        if(!/^[a-f0-9-]{36}$/i.test(id)||!['evaluate','revise','reject'].includes(recommendation)||note.length<12||note.length>2000)
+          return fail(400,'INVALID_REVIEW','Strategy, recommendation and a 12-2000 character note required');
+        const owner=String(env.FEED_OWNER_EMAIL||'').trim().toLowerCase();
+        const strategy=await db.prepare('SELECT version FROM strategy_registry WHERE id=? AND owner_email=?').bind(id,owner).first();
+        if(!strategy)return fail(404,'NOT_FOUND','Strategy unavailable');
+        // Re-check expiry immediately before mutation (not only during authentication).
+        const active=await db.prepare('SELECT slot FROM reviewer_slots WHERE slot=? AND reviewer_email=? AND expires_at>?').bind(user.reviewerSlot,user.email,now).first();
+        if(!active)return fail(403,'REVIEW_EXPIRED','Reviewer appointment expired');
+        await db.prepare('INSERT INTO review_feedback(id,slot,reviewer_email,strategy_id,strategy_version,recommendation,note,created_at) VALUES (?,?,?,?,?,?,?,?)')
+          .bind(crypto.randomUUID(),active.slot,user.email,id,strategy.version,recommendation,note,now).run();
+        return json({saved:true,strategy_id:id,version:strategy.version},201);
+      }catch(e){return fail(503,'REVIEW_STORAGE_ERROR','Review submission unavailable');}
+    }
+    return fail(405,'METHOD_NOT_ALLOWED','GET and POST only');
+  }
+  return fail(404,'NOT_FOUND','Unknown reviewer route');
+}
+async function runLinksAPI(request,env,user){
+  if(!user.owner)return fail(403,'OWNER_ONLY','Run history restricted to owner');
+  if(!env.RESEARCH_DB)return fail(503,'STORAGE_NOT_CONFIGURED','Research storage unavailable');
+  if(request.method!=='GET')return fail(405,'METHOD_NOT_ALLOWED','Read-only index');
+  try{const r=await env.RESEARCH_DB.prepare('SELECT * FROM research_run_links ORDER BY created_at DESC LIMIT 200').all();
+    return json({runs:r.results||[],detail_source:'local_historical_engine'});}
+  catch{return fail(503,'STORAGE_ERROR','Run index unavailable');}
+}
+
 async function researchEngineAPI(request, url, env, user) {
   if (!user.owner) return fail(403,'OWNER_ONLY','Historical research engine restricted to the owner');
   const origin=String(env.RESEARCH_ENGINE_ORIGIN || '');
@@ -217,6 +301,19 @@ async function researchEngineAPI(request, url, env, user) {
     });
     if (response.status>=300 && response.status<400)return fail(502,'ENGINE_REDIRECT_BLOCKED','Unexpected research-engine redirect');
     if (!(response.headers.get('content-type')||'').includes('application/json'))return fail(502,'ENGINE_RESPONSE_INVALID','Research engine unavailable');
+    if(response.ok&&request.method==='POST'&&['/api/engine/backtests','/api/engine/paper'].includes(url.pathname)&&env.RESEARCH_DB){
+      // The engine commits the authoritative results, orders and fills to SQLite WAL.
+      // This secondary D1 index links cloud strategy versions to those durable jobs.
+      try{
+        const submitted=JSON.parse(body),result=await response.clone().json();
+        const strategy=submitted.strategy||{};
+        if(typeof result.id==='string'&&typeof strategy.id==='string'&&Number.isInteger(strategy.version)){
+          const kind=url.pathname.endsWith('paper')?'paper':'backtest';
+          await env.RESEARCH_DB.prepare('INSERT OR IGNORE INTO research_run_links(id,strategy_id,strategy_version,dataset_id,engine_job_id,run_type,created_at) VALUES (?,?,?,?,?,?,?)')
+            .bind(crypto.randomUUID(),strategy.id,strategy.version,String(submitted.dataset_id||''),result.id,kind,new Date().toISOString()).run();
+        }
+      }catch{ /* Engine's durable job remains authoritative if D1 index is temporarily unavailable. */ }
+    }
     const headers=new Headers({'content-type':'application/json; charset=utf-8','cache-control':'private, no-store',
       'x-content-type-options':'nosniff','x-robots-tag':'noindex, nofollow, noarchive','x-ac-surface':'private-research-desk'});
     return new Response(response.body,{status:response.status,headers});
@@ -238,12 +335,15 @@ export default {async fetch(request,env){
   try{user=await validateAccessJwt(request,env);}catch{
     return new Response('Research Desk access denied',{status:403,headers:{'cache-control':'no-store','content-type':'text/plain'}});
   }
+  user=await grantRole(user,env);
   if(request.method!=='GET'&&request.method!=='HEAD'&&request.method!=='POST')return fail(405,'METHOD_NOT_ALLOWED','Request method not supported');
   if(request.method==='POST'){
     if(request.headers.get('origin')!==url.origin)return fail(403,'ORIGIN_DENIED','Cross-origin write denied');
   }
-  if(url.pathname==='/api/whoami'&&request.method==='GET')return json({email:user.email,role:user.owner?'owner':'researcher'});
+  if(url.pathname==='/api/whoami'&&request.method==='GET')return json({email:user.email,role:user.role});
   if(url.pathname==='/api/status'&&request.method==='GET')return json({service:'alpha-covariance-desk',source:SOURCE,market_feed:user.owner&&env.MARKET_DATA_OWNER_DISPLAY==='enabled'?'owner-display-enabled':'restricted',data_rights:'display-only-owner-review; not licensed for algorithms or external display',storage_configured:!!env.RESEARCH_DB,execution:env.RESEARCH_ENGINE_ORIGIN==='https://engine.alphacovariance.com'?'historical-replay-configured':'disabled'});
+  if(url.pathname==='/api/reviewers'||url.pathname==='/api/reviews')return reviewerAPI(request,url,env,user);
+  if(url.pathname==='/api/runs')return runLinksAPI(request,env,user);
   if(url.pathname.startsWith('/api/strategies'))return strategyAPI(request,url,env,user);
   if(url.pathname.startsWith('/api/engine/'))return researchEngineAPI(request,url,env,user);
   if(url.pathname.startsWith('/api/')){

@@ -1,3 +1,5 @@
+> **R1.2 candidate:** use `docs/RELEASE_R12_DEPLOYMENT.md` for the updated migration, reviewer access and verification gates. The older R0.5 instructions below are background only.
+
 # Alpha Covariance — Consolidated Research Release R0.5
 
 **Prepared 12 November 2026. Source package only. NOT DEPLOYED.**

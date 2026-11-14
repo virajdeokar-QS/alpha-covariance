@@ -1,0 +1,120 @@
+{
+  "release": "R1.2-candidate",
+  "production_deployed": false,
+  "base": "release/r05-integration",
+  "requires_d1_migration": "0002_review_and_run_links.sql",
+  "files": {
+    "README.md": {
+      "bytes": 2929,
+      "sha256": "c66115b8186ced014e55f03b9d6ebcb75ecb5fd8435d8b5dc1485f390bf6c19e"
+    },
+    "START_HERE.md": {
+      "bytes": 7530,
+      "sha256": "bb63eec1d380b01070868dbcd21b2145f2124d7f76e4f91033d49d42eadf015b"
+    },
+    "build.py": {
+      "bytes": 35190,
+      "sha256": "608df4ed5d66e1a97786d7a344f4af2ead5c3e2913c3bd988985e9ded642d546"
+    },
+    "desk/index.html": {
+      "bytes": 12837,
+      "sha256": "34d83a610a47075bdf9f5c4c6a7e67992e8a15b7607fbecf4cbc23750c196971"
+    },
+    "desk/assets/desk.js": {
+      "bytes": 16884,
+      "sha256": "635e345935b8ff8e45224710e7bde84aacf28016db5333a7508f62542602d41d"
+    },
+    "desk/studio.html": {
+      "bytes": 6244,
+      "sha256": "f5e5e8615f0ca786dda80fafdb0119a56538420dc11b43bcafbe45de02e32b1b"
+    },
+    "desk/assets/studio.js": {
+      "bytes": 10550,
+      "sha256": "7cbcdfa6530c49699879ab6e6617681ad464e3a59e4710252eb5cfac3bbf91b6"
+    },
+    "desk/assets/studio.css": {
+      "bytes": 7630,
+      "sha256": "3a2c06bdc8ab1b3a29e576d3120e2d2f3eef07331cb69b34b6582faf9851493b"
+    },
+    "desk/laboratory.html": {
+      "bytes": 13712,
+      "sha256": "d079a966918341672b3706be80472f8c9db1dce2c358e3aa438b7ab97ec0cb1f"
+    },
+    "desk/assets/laboratory.js": {
+      "bytes": 21436,
+      "sha256": "afcacc328213efe5641150288dae4de1427a99409494f55945ce73bd7423cd63"
+    },
+    "desk/assets/laboratory.css": {
+      "bytes": 9407,
+      "sha256": "2c068d6b213c79ffbe56e2e6b31b4276ff463e1d02fcd056f32ad7a5ec4ba22a"
+    },
+    "desk/worker/index.js": {
+      "bytes": 27508,
+      "sha256": "3a8ae1ef2fbc4c66340fc65d701a173b06195d83f0dc16c84017ce1dd20567f8"
+    },
+    "desk/review.html": {
+      "bytes": 2988,
+      "sha256": "a163dac8a6875d8f8976fce4ab3acdb5bd16e30c795977dd62e146173b688721"
+    },
+    "desk/assets/review.js": {
+      "bytes": 3876,
+      "sha256": "031297aee183c9525f6662137b1c159da4a5bb99d454333dc4234b2ad5b259a1"
+    },
+    "desk/assets/review.css": {
+      "bytes": 4052,
+      "sha256": "d9689aa702546d1a871bc3ff8d7f4da4fe92c1a8981b3cc1841cbe633056eb62"
+    },
+    "desk/markets.html": {
+      "bytes": 4284,
+      "sha256": "bda9a38a702e184d6c95dae8f6b4421fba0bebdb37e4c1e674f04267d5006c5e"
+    },
+    "desk/assets/markets.js": {
+      "bytes": 13438,
+      "sha256": "b8fe13417e737c1ecbbe485560b90b983368ada8e66720965e8ee77590731492"
+    },
+    "desk/assets/markets.css": {
+      "bytes": 7148,
+      "sha256": "62e9c55705e2bba7a470b550d53fbf2da3348cb6c2338c4039ff9edd2384bbfa"
+    },
+    "research_engine/store.py": {
+      "bytes": 22251,
+      "sha256": "ba3604cc84bdffb34c71f0e6ba3ac4633a561a57f4aef7c1e9f230347dda76a7"
+    },
+    "research_engine/server.py": {
+      "bytes": 5094,
+      "sha256": "1e01c551b7602edbe60b49d23f98c42c93ff7a332e85e91f51c5d9b3159312ae"
+    },
+    "migrations/0002_review_and_run_links.sql": {
+      "bytes": 1556,
+      "sha256": "9a663615e84d47e390301feecd5e7987c89df9c8ea45c8a374e41611c002953a"
+    },
+    "tests/reviewers.test.mjs": {
+      "bytes": 6386,
+      "sha256": "023593906b2418df9fcdd0cebe13204775ea94dd7f5b08de867ea52de9dca1e6"
+    },
+    "tests/market-catalog.test.mjs": {
+      "bytes": 1023,
+      "sha256": "5b5bac3712e52f6f971be941355ee26c29c8fcebd5ebe32e5ca5a3dae6b60ac0"
+    },
+    "tests_engine/test_engine.py": {
+      "bytes": 6441,
+      "sha256": "a19b6cf009e068e3683221afc5fb996addd22bb2d82f6d9b4844bfcc0b531948"
+    },
+    "site/privacy/index.html": {
+      "bytes": 6998,
+      "sha256": "b431446da9d13055e31a2f55f5ae22961b2d39fbda9b3f8976b7ae7d3bd094db"
+    },
+    "docs/RELEASE_R12_DEPLOYMENT.md": {
+      "bytes": 8307,
+      "sha256": "68a9c7c7bc594a31353f39fa03bd0399019b6e86f7cacb900bd7fd2e75e4e709"
+    },
+    "scripts/audit_research_links.py": {
+      "bytes": 1684,
+      "sha256": "58e6b3844b25ea1477d653ea1d759919530c418548f1bdb91aebc013cab2c755"
+    },
+    "scripts/verify_r12.ps1": {
+      "bytes": 653,
+      "sha256": "27bb8354e44634fc31234a7c69ecc95988aa1355946e7833aeaeb418878274cd"
+    }
+  }
+}
